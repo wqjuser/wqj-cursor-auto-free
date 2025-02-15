@@ -1,0 +1,5 @@
+DrissionPage
+colorama
+python-dotenv
+psutil
+requests
