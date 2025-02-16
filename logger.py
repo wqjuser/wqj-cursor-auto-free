@@ -9,7 +9,7 @@ if not os.path.exists(log_dir):
 
 logging.basicConfig(
     filename=os.path.join(log_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log"),
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     encoding="utf-8",
 )

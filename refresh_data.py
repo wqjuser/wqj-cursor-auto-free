@@ -1,9 +1,9 @@
+import json
 import logging
+import os
 import random
 import sys
 import time
-import os
-import json
 from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, List
 
@@ -516,12 +516,12 @@ def save_account_to_api(email, password, credits=150, user_id=None, refresh_toke
         return False
 
 
-def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_id=None):
+def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_id=None, only_refresh=True):
     """
     更新Cursor的认证信息的便捷函数
     """
     auth_manager = CursorAuthManager()
-    return auth_manager.update_auth(email, access_token, refresh_token, user_id)
+    return auth_manager.update_auth(email, access_token, refresh_token, user_id, only_refresh=only_refresh)
 
 
 def change_account_info(email: str) -> bool:
@@ -572,7 +572,7 @@ def replace_account():
             with open(account_path, 'r', encoding='utf-8') as f:
                 account_data = json.loads(f.read())
                 current_user_id = account_data.get('user_id')
-                
+
                 if current_user_id:
                     # 检查使用情况
                     logging.info("开始检查账号使用情况...")
@@ -581,26 +581,27 @@ def replace_account():
                             'WorkosCursorSessionToken': f"{current_user_id}%3A%3A{account_data['token']}"
                         }
                         response = requests.get(
-                            f"https://www.cursor.com/api/usage", 
+                            f"https://www.cursor.com/api/usage",
                             params={"user": current_user_id},
                             cookies=cookies
                         )
                         if response.status_code == 200:
                             usage_data = response.json()
                             # 将字符串解析为datetime并添加UTC时区
-                            start_of_month = datetime.strptime(usage_data['startOfMonth'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+                            start_of_month = datetime.strptime(usage_data['startOfMonth'],
+                                                               "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
                             expiry_date = start_of_month + timedelta(days=14)
                             current_time = datetime.now(UTC)
-                            
+
                             logging.info(f"账号开始时间: {start_of_month}")
                             logging.info(f"账号过期时间: {expiry_date}")
                             logging.info(f"当前时间: {current_time}")
-                            
+
                             if expiry_date > current_time:
                                 logging.info("账号在有效期内")
                                 gpt4_usage = usage_data.get('gpt-4', {}).get('numRequests', 0)
                                 logging.info(f"高级对话 已使用次数: {gpt4_usage}")
-                                
+
                                 if gpt4_usage < 50:
                                     logging.info("当前账号仍然可用，无需替换")
                                     return True
@@ -618,7 +619,7 @@ def replace_account():
                     logging.info("account.json 中没有 user_id 信息")
         except Exception as e:
             logging.error(f"读取account.json文件时出错: {str(e)}")
-    
+
     logging.info("开始执行账号替换流程...")
     # 获取可用账号
     accounts = get_available_accounts()
@@ -637,20 +638,23 @@ def replace_account():
         email=account["email"],
         access_token=account["access_token"],
         refresh_token=account["refresh_token"],
-        user_id=account["user_id"]
+        user_id=account["user_id"],
+        only_refresh = True
     )
 
     if is_updated:
         # 标记账号为已使用
         if change_account_info(account["email"]):
             logging.info("账号替换完成")
-            logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
+            logging.info(
+                f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
             return True
         else:
             logging.error("标记账号已使用状态失败")
-            logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
+            logging.info(
+                f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
             return False
-            
+
     else:
         logging.error("更新认证信息失败")
         logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")

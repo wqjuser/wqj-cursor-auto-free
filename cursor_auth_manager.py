@@ -1,7 +1,8 @@
+import json
+import logging
 import os
 import sqlite3
 import sys
-import json
 
 
 class CursorAuthManager:
@@ -27,18 +28,20 @@ class CursorAuthManager:
         else:
             raise NotImplementedError(f"不支持的操作系统: {sys.platform}")
 
-    def update_auth(self, email=None, access_token=None, refresh_token=None, user_id=None):
+    def update_auth(self, email=None, access_token=None, refresh_token=None, user_id=None, only_refresh=False):
         """
         更新Cursor的认证信息
         :param email: 新的邮箱地址
         :param access_token: 新的访问令牌
         :param refresh_token: 新的刷新令牌
         :param user_id: 新的用户ID
+        :param only_refresh: bool 是否仅更新
         :return: bool 是否成功更新
         """
         updates = []
-        # 登录状态
-        updates.append(("cursorAuth/cachedSignUpType", "Auth_0"))
+        if not only_refresh:
+            # 登录状态
+            updates.append(("cursorAuth/cachedSignUpType", "Auth_0"))
 
         if email is not None:
             updates.append(("cursorAuth/cachedEmail", email))
@@ -54,7 +57,7 @@ class CursorAuthManager:
         # 处理 account.json 文件
         account_path = os.path.join(os.path.dirname(self.db_path), "account.json")
         account_data = {"user_id": user_id, "token": access_token}
-        
+
         try:
             # 如果文件已存在，先读取现有内容
             if os.path.exists(account_path):
@@ -70,7 +73,7 @@ class CursorAuthManager:
             # 写入或更新文件
             with open(account_path, 'w', encoding='utf-8') as f:
                 json.dump(account_data, f)
-            print(f"成功更新account.json文件: {account_path}")
+            print(f"成功更新: account.json文件")
         except Exception as e:
             print(f"处理account.json文件失败: {str(e)}")
             return False
