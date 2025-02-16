@@ -872,15 +872,7 @@ if __name__ == "__main__":
                 print("请输入大于0的数字")
             except ValueError:
                 print("请输入有效的数字")
-
-        # 在这里获取 PIN 码
-        pin = input("\n请输入邮箱 PIN 码: ").strip()
-        logging.info("PIN 码已输入")
-
-        batch_register(num, pin)
-        print("\n批量注册完成，按回车键退出...", end='', flush=True)
-        input()
-        sys.exit(0)
+        refresh_data.batch_register(num)
 
     elif choice == 666:  # not show user and user do not have refresh_data file
         refresh_data.main()
