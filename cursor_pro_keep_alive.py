@@ -523,7 +523,7 @@ def show_menu():
 
     while True:
         choice = input("\n请选择功能 (1-6): ").strip()
-        if choice in ['1', '2', '3', '4', '5', '666']:
+        if choice in ['1', '2', '3', '4', '5', '6', '666']:
             return int(choice)
         print("无效的选择，请重试")
 

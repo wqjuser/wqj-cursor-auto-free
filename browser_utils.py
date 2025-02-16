@@ -38,7 +38,7 @@ class BrowserManager:
             co.set_user_agent(user_agent)
 
         co.headless(
-            os.getenv("BROWSER_HEADLESS", "True").lower() == "true"
+            os.getenv("BROWSER_HEADLESS", "False").lower() == "true"
         )  # 生产环境使用无头模式
 
         # Mac 系统特殊处理
