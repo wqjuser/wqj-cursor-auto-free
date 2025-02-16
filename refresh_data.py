@@ -644,12 +644,16 @@ def replace_account():
         # 标记账号为已使用
         if change_account_info(account["email"]):
             logging.info("账号替换完成")
+            logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
             return True
         else:
             logging.error("标记账号已使用状态失败")
+            logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
             return False
+            
     else:
         logging.error("更新认证信息失败")
+        logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
         return False
 
 
