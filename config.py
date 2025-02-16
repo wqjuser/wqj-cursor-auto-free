@@ -33,11 +33,11 @@ class Config:
 
         # 指定 .env 文件的路径
         dotenv_path = os.path.join(application_path, ".env")
-        domains = ["wqj666.ggff.net", "wqjsonder.ggff.net", "cemail.site", "mailnet.space"]
+        self._domains = ["wqj666.ggff.net", "wqjsonder.ggff.net", "cemail.site", "mailnet.space"]
         # 设置默认值
         self.imap = False
-        self.temp_mail = "sonder"  # 默认设置为 wqj666
-        self.domain = random.choice(domains)
+        self.temp_mail = "sonder"  # 默认设置为 sonder
+        self.domain = random.choice(self._domains)
 
         # 检查是否支持颜色输出
         def supports_color():
@@ -106,7 +106,8 @@ class Config:
         }
 
     def get_domain(self):
-        return self.domain
+        """随机返回一个域名"""
+        return random.choice(self._domains)
 
     def check_config(self):
         """检查配置项是否有效

@@ -190,7 +190,7 @@ def handle_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1, 2)) 
     return False
 
 
-def get_cursor_session_token(tab, max_attempts=3, retry_interval=2):
+def get_cursor_session_token(tab, max_attempts=3, retry_interval=2) -> Optional[tuple[str, str]]:
     """
     获取Cursor会话token，带有重试机制
     :param tab: 浏览器标签页
@@ -206,7 +206,10 @@ def get_cursor_session_token(tab, max_attempts=3, retry_interval=2):
             cookies = tab.cookies()
             for cookie in cookies:
                 if cookie.get("name") == "WorkosCursorSessionToken":
-                    return cookie["value"].split("%3A%3A")[1]
+                    value = cookie["value"]
+                    parts = value.split("%3A%3A")
+                    if len(parts) >= 2:
+                        return parts[0], parts[1]
 
             attempts += 1
             if attempts < max_attempts:
@@ -229,12 +232,12 @@ def get_cursor_session_token(tab, max_attempts=3, retry_interval=2):
     return None
 
 
-def update_cursor_auth(email=None, access_token=None, refresh_token=None):
+def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_id=None):
     """
     更新Cursor的认证信息的便捷函数
     """
     auth_manager = CursorAuthManager()
-    return auth_manager.update_auth(email, access_token, refresh_token)
+    return auth_manager.update_auth(email, access_token, refresh_token, user_id)
 
 
 def save_account_to_api(email, password, credits=150):
@@ -386,8 +389,7 @@ def sign_up_account(browser, tab, is_auto_register=False):
 
 class EmailGenerator:
     def __init__(self):
-        configInstance = Config()
-        self.domain = configInstance.get_domain()
+        self.config = Config()
 
     @staticmethod
     def generate_password(length=12):
@@ -408,7 +410,9 @@ class EmailGenerator:
         """生成随机邮箱地址"""
         random_str = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=length))
         timestamp = str(int(time.time()))[-6:]  # 使用时间戳后6位
-        return f"{random_str}{timestamp}@{self.domain}"
+        # 每次从 config 获取随机域名
+        domain = self.config.get_domain()
+        return f"{random_str}{timestamp}@{domain}"
 
     def get_account_info(self):
         """获取完整的账号信息"""
@@ -595,11 +599,11 @@ def try_register(is_auto_register=False, pin=''):
     if sign_up_account(browser, tab, is_auto_register):
         if not is_auto_register:
             logging.info("正在获取会话令牌...")
-            token = get_cursor_session_token(tab)
+            user_id, token = get_cursor_session_token(tab)
             if token:
                 logging.info("更新认证信息...")
                 update_cursor_auth(
-                    email=account, access_token=token, refresh_token=token
+                    email=account, access_token=token, refresh_token=token, user_id=user_id
                 )
 
                 logging.info("所有操作已完成")
@@ -812,10 +816,10 @@ if __name__ == "__main__":
 
                     if is_success:
                         logging.info("正在获取会话令牌...")
-                        token = get_cursor_session_token(tab)
+                        user_id, token = get_cursor_session_token(tab)
                         if token:
                             logging.info("更新认证信息...")
-                            update_cursor_auth(email=email, access_token=token, refresh_token=token)
+                            update_cursor_auth(email=email, access_token=token, refresh_token=token, user_id=user_id)
                             logging.info("登录完成")
                         else:
                             logging.error("获取会话令牌失败")

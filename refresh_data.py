@@ -2,7 +2,9 @@ import logging
 import random
 import sys
 import time
-from datetime import datetime
+import os
+import json
+from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, List
 
 import requests
@@ -514,12 +516,13 @@ def save_account_to_api(email, password, credits=150, user_id=None, refresh_toke
         return False
 
 
-def update_cursor_auth(email=None, access_token=None, refresh_token=None):
+def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_id=None):
     """
     更新Cursor的认证信息的便捷函数
     """
     auth_manager = CursorAuthManager()
-    return auth_manager.update_auth(email, access_token, refresh_token)
+    return auth_manager.update_auth(email, access_token, refresh_token, user_id)
+
 
 def change_account_info(email: str) -> bool:
     """标记账号为已使用状态
@@ -543,8 +546,80 @@ def change_account_info(email: str) -> bool:
         logging.error(f"标记账号时出错: {str(e)}")
         return False
 
+
 def replace_account():
     """替换账号功能"""
+    # 根据操作系统确定account.json的路径
+    if sys.platform == "win32":  # Windows
+        appdata = os.getenv("APPDATA")
+        if appdata is None:
+            logging.error("APPDATA 环境变量未设置")
+            return False
+        account_path = os.path.join(appdata, "Cursor", "User", "globalStorage", "account.json")
+    elif sys.platform == "darwin":  # macOS
+        account_path = os.path.abspath(os.path.expanduser(
+            "~/Library/Application Support/Cursor/User/globalStorage/account.json"
+        ))
+    elif sys.platform == "linux":  # Linux
+        account_path = os.path.abspath(os.path.expanduser(
+            "~/.config/Cursor/User/globalStorage/account.json"
+        ))
+    else:
+        logging.error(f"不支持的操作系统: {sys.platform}")
+        return False
+    if os.path.exists(account_path):
+        try:
+            with open(account_path, 'r', encoding='utf-8') as f:
+                account_data = json.loads(f.read())
+                current_user_id = account_data.get('user_id')
+                
+                if current_user_id:
+                    # 检查使用情况
+                    logging.info("开始检查账号使用情况...")
+                    try:
+                        cookies = {
+                            'WorkosCursorSessionToken': f"{current_user_id}%3A%3A{account_data['token']}"
+                        }
+                        response = requests.get(
+                            f"https://www.cursor.com/api/usage", 
+                            params={"user": current_user_id},
+                            cookies=cookies
+                        )
+                        if response.status_code == 200:
+                            usage_data = response.json()
+                            # 将字符串解析为datetime并添加UTC时区
+                            start_of_month = datetime.strptime(usage_data['startOfMonth'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+                            expiry_date = start_of_month + timedelta(days=14)
+                            current_time = datetime.now(UTC)
+                            
+                            logging.info(f"账号开始时间: {start_of_month}")
+                            logging.info(f"账号过期时间: {expiry_date}")
+                            logging.info(f"当前时间: {current_time}")
+                            
+                            if expiry_date > current_time:
+                                logging.info("账号在有效期内")
+                                gpt4_usage = usage_data.get('gpt-4', {}).get('numRequests', 0)
+                                logging.info(f"高级对话 已使用次数: {gpt4_usage}")
+                                
+                                if gpt4_usage < 50:
+                                    logging.info("当前账号仍然可用，无需替换")
+                                    return True
+                                else:
+                                    logging.info("高级对话 使用次数已达到或超过限制，需要替换账号")
+                            else:
+                                logging.info("账号已过期，需要替换")
+                        else:
+                            logging.error(f"API请求失败，状态码: {response.status_code}")
+                            if response.status_code == 401:
+                                logging.error("认证失败，token可能已过期，需要替换账号")
+                    except Exception as e:
+                        logging.error(f"检查使用情况时出错: {str(e)}")
+                else:
+                    logging.info("account.json 中没有 user_id 信息")
+        except Exception as e:
+            logging.error(f"读取account.json文件时出错: {str(e)}")
+    
+    logging.info("开始执行账号替换流程...")
     # 获取可用账号
     accounts = get_available_accounts()
     if len(accounts) == 0:
@@ -555,15 +630,16 @@ def replace_account():
     # 随机选择一个
     account = random.choice(accounts)
     logging.info(f"随机选择一个账号: {account['email']}")
-    
+
     # 更新认证信息
     logging.info("更新认证信息...")
     is_updated = update_cursor_auth(
-        email=account["email"], 
-        access_token=account["access_token"], 
-        refresh_token=account["refresh_token"]
+        email=account["email"],
+        access_token=account["access_token"],
+        refresh_token=account["refresh_token"],
+        user_id=account["user_id"]
     )
-    
+
     if is_updated:
         # 标记账号为已使用
         if change_account_info(account["email"]):
@@ -575,6 +651,7 @@ def replace_account():
     else:
         logging.error("更新认证信息失败")
         return False
+
 
 def refresh_data():
     """刷新数据功能"""

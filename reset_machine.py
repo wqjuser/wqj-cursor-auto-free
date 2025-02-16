@@ -126,9 +126,9 @@ class MachineIDResetter:
                 json.dump(config, f, indent=4)
 
             print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 机器标识重置成功！{Style.RESET_ALL}")
-            print(f"\n{Fore.CYAN}新的机器标识:{Style.RESET_ALL}")
-            for key, value in new_ids.items():
-                print(f"{EMOJI['INFO']} {key}: {Fore.GREEN}{value}{Style.RESET_ALL}")
+            # print(f"\n{Fore.CYAN}新的机器标识:{Style.RESET_ALL}")
+            # for key, value in new_ids.items():
+            #     print(f"{EMOJI['INFO']} {key}: {Fore.GREEN}{value}{Style.RESET_ALL}")
 
             if  is_045_version:
                 patch_cursor_get_machine_id.main(restore_mode=False)
@@ -186,11 +186,11 @@ class MachineIDResetter:
                 json.dump(backup_config, f, indent=4)
 
             print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 机器标识已恢复！{Style.RESET_ALL}")
-            print(f"\n{Fore.CYAN}已恢复的机器标识:{Style.RESET_ALL}")
-            for key in ['telemetry.devDeviceId', 'telemetry.macMachineId',
-                        'telemetry.machineId', 'telemetry.sqmId']:
-                if key in backup_config:
-                    print(f"{EMOJI['INFO']} {key}: {Fore.GREEN}{backup_config[key]}{Style.RESET_ALL}")
+            # print(f"\n{Fore.CYAN}已恢复的机器标识:{Style.RESET_ALL}")
+            # for key in ['telemetry.devDeviceId', 'telemetry.macMachineId',
+            #             'telemetry.machineId', 'telemetry.sqmId']:
+            #     if key in backup_config:
+            #         print(f"{EMOJI['INFO']} {key}: {Fore.GREEN}{backup_config[key]}{Style.RESET_ALL}")
 
             if  is_045_version:
                 patch_cursor_get_machine_id.main(restore_mode=True)
