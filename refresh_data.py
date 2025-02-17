@@ -506,7 +506,6 @@ def save_account_to_api(email, password, credits=150, user_id=None, refresh_toke
     try:
         response = requests.post(api_url, json=payload)
         if response.status_code == 200:
-            logging.info("账号信息已成功保存到数据库")
             return True
         else:
             logging.error(f"保存账号信息失败，状态码: {response.status_code}")
