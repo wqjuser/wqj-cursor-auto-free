@@ -6,7 +6,7 @@ import sys
 import time
 from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, List
-
+import urllib.parse
 import requests
 
 from browser_utils import BrowserManager
@@ -210,7 +210,7 @@ def show_menu():
 
 
 def sign_up_account(tab, email: str, password: str, first_name: str, last_name: str,
-                    email_handler: EmailVerificationHandler) -> bool:
+                    email_handler: EmailVerificationHandler) -> bool | None:
     """注册Cursor账号"""
     logging.info(f"=== 开始注册账号: {email} ===")
     sign_up_url = "https://authenticator.cursor.sh/sign-up"
@@ -318,7 +318,7 @@ def switch_proxy() -> bool:
 
                 for selected_proxy in valid_proxies:
                     # URL编码代理名称
-                    encoded_proxy = requests.utils.quote(selected_proxy)
+                    encoded_proxy = urllib.parse.quote(selected_proxy)
 
                     # 检查代理存活状态
                     check_response = requests.get(f"http://127.0.0.1:9097/proxies/{encoded_proxy}")
@@ -371,6 +371,19 @@ def switch_proxy() -> bool:
         return False
 
 
+def get_user_agent():
+    """获取user_agent"""
+    try:
+        # 使用JavaScript获取user agent
+        browser_manager = BrowserManager()
+        browser = browser_manager.init_browser()
+        user_agent = browser.latest_tab.run_js("return navigator.userAgent")
+        browser_manager.quit()
+        return user_agent
+    except Exception as e:
+        logging.error(f"获取user agent失败: {str(e)}")
+        return None
+
 def batch_register(num_accounts):
     """批量注册账号
     Args:
@@ -379,7 +392,7 @@ def batch_register(num_accounts):
     # 获取邮箱PIN码
     pin = input("\n请输入邮箱 PIN 码: ").strip()
     logging.info("PIN 码已输入")
-
+    logging.info("正在初始化邮箱验证模块...")
     # 初始化邮箱验证处理器
     email_handler = EmailVerificationHandler(pin=pin)
 
@@ -398,10 +411,20 @@ def batch_register(num_accounts):
         browser_manager = None
         try:
             # 初始化浏览器
+            logging.info("正在初始化浏览器...")
+            # 获取user_agent
+            user_agent = get_user_agent()
+            if not user_agent:
+                logging.error("获取user agent失败，使用默认值")
+                user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            # 剔除user_agent中的"HeadlessChrome"
+            user_agent = user_agent.replace("HeadlessChrome", "Chrome")
             browser_manager = BrowserManager()
-            browser = browser_manager.init_browser()
+            browser = browser_manager.init_browser(user_agent=user_agent)
+            # 获取并打印浏览器的user-agent
+            user_agent = browser.latest_tab.run_js("return navigator.userAgent")
             tab = browser.latest_tab
-
+            tab.run_js("try { turnstile.reset() } catch(e) { }")
             # 生成账号信息
             email_generator = EmailGenerator()
             account_info = email_generator.get_account_info()

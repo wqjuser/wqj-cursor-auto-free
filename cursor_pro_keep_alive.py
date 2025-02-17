@@ -4,7 +4,7 @@ import subprocess
 import sys
 from enum import Enum
 from typing import Optional
-
+import urllib.parse
 import requests  # 添加到文件顶部的导入部分
 
 import refresh_data
@@ -647,7 +647,7 @@ def batch_register(num_accounts, pin=''):
 
                     for selected_proxy in valid_proxies:
                         # URL编码代理名称
-                        encoded_proxy = requests.utils.quote(selected_proxy)
+                        encoded_proxy = urllib.parse.quote(selected_proxy)
 
                         # 检查代理存活状态
                         check_response = requests.get(f"http://127.0.0.1:9097/proxies/{encoded_proxy}")
@@ -873,6 +873,9 @@ if __name__ == "__main__":
             except ValueError:
                 print("请输入有效的数字")
         refresh_data.batch_register(num)
+        print("\n按任意键键退出...", end='', flush=True)
+        input()
+        sys.exit(0)
 
     elif choice == 666:  # not show user and user do not have refresh_data file
         refresh_data.main()
