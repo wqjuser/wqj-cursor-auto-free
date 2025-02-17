@@ -279,9 +279,7 @@ def sign_up_account(tab, email: str, password: str, first_name: str, last_name: 
                 logging.info("验证码输入完成")
 
                 # 处理可能的turnstile验证
-                if not handle_turnstile(tab):
-                    logging.error("验证码提交后的Turnstile验证失败")
-                    return False
+                handle_turnstile(tab)
 
                 # 等待处理结果
                 time.sleep(3)
