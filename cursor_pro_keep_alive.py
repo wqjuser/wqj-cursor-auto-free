@@ -2,9 +2,10 @@ import ctypes
 import os
 import subprocess
 import sys
+import urllib.parse
 from enum import Enum
 from typing import Optional
-import urllib.parse
+
 import requests  # 添加到文件顶部的导入部分
 
 import refresh_data
@@ -229,7 +230,7 @@ def get_cursor_session_token(tab, max_attempts=3, retry_interval=2) -> Optional[
                 logging.info(f"将在 {retry_interval} 秒后重试...")
                 time.sleep(retry_interval)
 
-    return None
+    return '', ''
 
 
 def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_id=None):
@@ -273,7 +274,7 @@ def save_account_to_api(email, password, credits=150):
         return False
 
 
-def sign_up_account(browser, tab, is_auto_register=False):
+def sign_up_account(tab, is_auto_register=False):
     logging.info("=== 开始注册账号流程 ===")
     logging.info(f"正在访问注册页面: {sign_up_url}")
     tab.get(sign_up_url)
@@ -438,7 +439,7 @@ def get_user_agent():
         return None
 
 
-def sign_in_account(browser, tab, email, password=None):
+def sign_in_account(tab, email, password=None):
     """登录Cursor账号"""
     logging.info("=== 开始登录账号流程 ===")
     login_url = "https://authenticator.cursor.sh"
@@ -523,7 +524,7 @@ def show_menu():
 
     while True:
         choice = input("\n请选择功能 (1-6): ").strip()
-        if choice in ['1', '2', '3', '4', '5', '6', '666']:
+        if choice in ['1', '2', '3', '4', '5', '6', '7', '666']:
             return int(choice)
         print("无效的选择，请重试")
 
@@ -573,7 +574,7 @@ def try_register(is_auto_register=False, pin=''):
     # 剔除user_agent中的"HeadlessChrome"
     user_agent = user_agent.replace("HeadlessChrome", "Chrome")
     browser_manager = BrowserManager()
-    browser = browser_manager.init_browser(user_agent=user_agent)
+    browser = browser_manager.init_browser(user_agent=user_agent, randomize_fingerprint=True)
     # 获取并打印浏览器的user-agent
     user_agent = browser.latest_tab.run_js("return navigator.userAgent")
 
@@ -596,7 +597,7 @@ def try_register(is_auto_register=False, pin=''):
     tab.run_js("try { turnstile.reset() } catch(e) { }")
     logging.info(f"正在访问登录页面: {login_url}")
     tab.get(login_url)
-    if sign_up_account(browser, tab, is_auto_register):
+    if sign_up_account(tab, is_auto_register):
         if not is_auto_register:
             logging.info("正在获取会话令牌...")
             user_id, token = get_cursor_session_token(tab)
@@ -605,7 +606,6 @@ def try_register(is_auto_register=False, pin=''):
                 update_cursor_auth(
                     email=account, access_token=token, refresh_token=token, user_id=user_id
                 )
-
                 logging.info("所有操作已完成")
                 is_success = True
             else:
@@ -804,15 +804,15 @@ if __name__ == "__main__":
                 user_agent = user_agent.replace("HeadlessChrome", "Chrome")
 
                 browser_manager = BrowserManager()
-                browser = browser_manager.init_browser(user_agent=user_agent)  # 使用有头模式
+                browser = browser_manager.init_browser(user_agent=user_agent, randomize_fingerprint=True)  # 使用有头模式
                 tab = browser.latest_tab
                 is_success = False
                 try:
                     if login_type == "1":
                         password = input("请输入密码: ").strip()
-                        is_success = sign_in_account(browser, tab, email, password)
+                        is_success = sign_in_account(tab, email, password)
                     else:
-                        is_success = sign_in_account(browser, tab, email)
+                        is_success = sign_in_account(tab, email)
 
                     if is_success:
                         logging.info("正在获取会话令牌...")
@@ -876,6 +876,67 @@ if __name__ == "__main__":
         print("\n按任意键键退出...", end='', flush=True)
         input()
         sys.exit(0)
+    elif choice == 7:
+        logging.info("开始更换浏览器指纹...")
+        browser_manager = None
+        try:
+            # 获取user_agent
+            user_agent = get_user_agent()
+            if not user_agent:
+                logging.error("获取user agent失败，使用默认值")
+                user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            # 剔除user_agent中的"HeadlessChrome"
+            user_agent = user_agent.replace("HeadlessChrome", "Chrome")
+
+            browser_manager = BrowserManager()
+            browser = browser_manager.init_browser(user_agent=user_agent, randomize_fingerprint=True)
+
+            # 创建截图目录
+            screenshot_dir = "screenshots"
+            if not os.path.exists(screenshot_dir):
+                os.makedirs(screenshot_dir)
+
+            # 访问多个指纹检测网站
+            fingerprint_sites = [
+                {
+                    "url": "https://browserleaks.com/javascript",
+                    "name": "browserleaks_js",
+                    "wait": 5
+                },
+                {
+                    "url": "https://browserleaks.com/canvas",
+                    "name": "browserleaks_canvas",
+                    "wait": 5
+                },
+                {
+                    "url": "https://browserleaks.com/webgl",
+                    "name": "browserleaks_webgl",
+                    "wait": 5
+                }
+            ]
+
+            tab = browser.latest_tab
+            for site in fingerprint_sites:
+                try:
+                    logging.info(f"正在访问 {site['name']} ...")
+                    tab.get(site["url"])
+                    time.sleep(site["wait"])  # 等待页面加载
+
+                    # 保存截图
+                    filename = f"fingerprint_{site['name']}_{int(time.time())}.png"
+                    filepath = os.path.join(screenshot_dir, filename)
+                    tab.get_screenshot(filepath)
+                    logging.info(f"已保存 {site['name']} 的指纹信息截图: {filepath}")
+                except Exception as e:
+                    logging.error(f"访问 {site['name']} 时出错: {str(e)}")
+
+            logging.info("\n所有指纹检测完成，截图已保存到 screenshots 目录")
+            time.sleep(1)
+            input("\n按回车键退出...")
+            sys.exit(0)
+        except Exception as e:
+            logging.error(f"更换浏览器指纹时出错: {str(e)}")
+            sys.exit(1)
 
     elif choice == 666:  # not show user and user do not have refresh_data file
         refresh_data.main()
