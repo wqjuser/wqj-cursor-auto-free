@@ -374,7 +374,7 @@ def get_user_agent():
     try:
         # 使用JavaScript获取user agent
         browser_manager = BrowserManager()
-        browser = browser_manager.init_browser()
+        browser = browser_manager.init_browser(randomize_fingerprint=True)
         user_agent = browser.latest_tab.run_js("return navigator.userAgent")
         browser_manager.quit()
         return user_agent
@@ -418,7 +418,7 @@ def batch_register(num_accounts):
             # 剔除user_agent中的"HeadlessChrome"
             user_agent = user_agent.replace("HeadlessChrome", "Chrome")
             browser_manager = BrowserManager()
-            browser = browser_manager.init_browser(user_agent=user_agent)
+            browser = browser_manager.init_browser(user_agent=user_agent, randomize_fingerprint=True)
             # 获取并打印浏览器的user-agent
             user_agent = browser.latest_tab.run_js("return navigator.userAgent")
             tab = browser.latest_tab
@@ -693,7 +693,7 @@ def refresh_data():
 
     # 初始化浏览器
     browser_manager = BrowserManager()
-    browser = browser_manager.init_browser()
+    browser = browser_manager.init_browser(randomize_fingerprint=True)
 
     try:
         # 为每个账号创建新的上下文

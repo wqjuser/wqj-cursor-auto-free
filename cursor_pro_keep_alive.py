@@ -430,7 +430,7 @@ def get_user_agent():
     try:
         # 使用JavaScript获取user agent
         browser_manager = BrowserManager()
-        browser = browser_manager.init_browser()
+        browser = browser_manager.init_browser(randomize_fingerprint=True)
         user_agent = browser.latest_tab.run_js("return navigator.userAgent")
         browser_manager.quit()
         return user_agent
