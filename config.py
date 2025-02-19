@@ -106,7 +106,13 @@ class Config:
         }
 
     def get_domain(self):
-        """随机返回一个域名"""
+        """返回域名
+        如果存在环境变量配置的域名，则返回配置的域名
+        否则随机返回一个域名
+        """
+        env_domain = os.getenv("DOMAIN")
+        if env_domain and self.check_is_valid(env_domain):
+            return env_domain.strip()
         return random.choice(self._domains)
 
     def check_config(self):
