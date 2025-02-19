@@ -4,7 +4,7 @@ import os
 import random
 import sys
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, UTC, timezone
 from typing import Optional, Dict, List
 import urllib.parse
 import requests
@@ -613,9 +613,16 @@ def replace_account():
                             expiry_date = start_of_month + timedelta(days=14)
                             current_time = datetime.now(UTC)
 
-                            logging.info(f"账号开始时间: {start_of_month}")
-                            logging.info(f"账号过期时间: {expiry_date}")
-                            logging.info(f"当前时间: {current_time}")
+                            # 转换为东八区时间
+                            tz_utc_8 = timezone(timedelta(hours=8))
+                            start_of_month_utc8 = start_of_month.astimezone(tz_utc_8)
+                            expiry_date_utc8 = expiry_date.astimezone(tz_utc_8)
+                            current_time_utc8 = current_time.astimezone(tz_utc_8)
+
+                            # 格式化时间输出，不显示毫秒和时区后缀
+                            logging.info(f"账号开始时间: {start_of_month_utc8.strftime('%Y-%m-%d %H:%M:%S')}")
+                            logging.info(f"账号过期时间: {expiry_date_utc8.strftime('%Y-%m-%d %H:%M:%S')}")
+                            logging.info(f"当前系统时间: {current_time_utc8.strftime('%Y-%m-%d %H:%M:%S')}")
 
                             if expiry_date > current_time:
                                 logging.info("账号在有效期内")
