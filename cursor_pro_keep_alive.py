@@ -577,7 +577,6 @@ def try_register(is_auto_register=False, pin=''):
     browser = browser_manager.init_browser(user_agent=user_agent, randomize_fingerprint=True)
     # 获取并打印浏览器的user-agent
     user_agent = browser.latest_tab.run_js("return navigator.userAgent")
-    logging.info(user_agent)
     logging.info("正在初始化邮箱验证模块...")
     email_handler = EmailVerificationHandler(pin=pin)
 
