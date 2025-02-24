@@ -241,12 +241,12 @@ def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_i
     return auth_manager.update_auth(email, access_token, refresh_token, user_id)
 
 
-def save_account_to_api(email, password, credits=150):
+def save_account_to_api(email, password, credits=50):
     """保存账号信息到API
     Args:
         email: 邮箱账号
         password: 密码
-        credits: 额度，默认150
+        credits: 额度，默认50
     Returns:
         bool: 是否保存成功
     """
@@ -375,7 +375,7 @@ def sign_up_account(tab, is_auto_register=False):
     if is_auto_register:
         # 调用接口保存账号
         try:
-            credits = 150  # 默认额度
+            credits = 50  # 默认额度
             save_result = save_account_to_api(account, password, credits)
             if save_result:
                 logging.info("账号已成功保存到数据库")

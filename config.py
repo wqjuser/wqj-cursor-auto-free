@@ -33,7 +33,12 @@ class Config:
 
         # 指定 .env 文件的路径
         dotenv_path = os.path.join(application_path, ".env")
-        self._domains = ["wqj666.ggff.net", "wqjsonder.ggff.net", "cemail.site", "mailnet.space"]
+        self._domains = [
+            "wqj666.ggff.net",
+            "wqjsonder.ggff.net",
+            # "cemail.site",
+            # "mailnet.space"
+            ]
         # 设置默认值
         self.imap = False
         self.temp_mail = "sonder"  # 默认设置为 sonder

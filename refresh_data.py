@@ -448,7 +448,7 @@ def batch_register(num_accounts):
                     logging.info(f"第 {i + 1} 个账号注册成功")
                     # 调用接口保存账号
                     try:
-                        credits = 150  # 默认额度
+                        credits = 50  # 默认额度
                         save_result = save_account_to_api(email, password, credits, user_id, refresh_token,
                                                           access_token)
                         if save_result:
@@ -498,12 +498,12 @@ def batch_register(num_accounts):
             logging.error(f"保存账号信息到文件时出错: {str(e)}")
 
 
-def save_account_to_api(email, password, credits=150, user_id=None, refresh_token=None, access_token=None):
+def save_account_to_api(email, password, credits=50, user_id=None, refresh_token=None, access_token=None):
     """保存账号信息到API
     Args:
         email: 邮箱账号
         password: 密码
-        credits: 额度，默认150
+        credits: 额度，默认50
         user_id: 用户ID
         refresh_token: 刷新令牌
         access_token: 访问令牌
