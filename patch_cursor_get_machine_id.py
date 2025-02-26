@@ -9,13 +9,17 @@ import re
 import shutil
 import sys
 import time
-import winreg
+import tempfile
 import psutil
 from typing import Tuple, Optional, List
 import asyncio
 import aiofiles
 import aiofiles.os
 import aiofiles.tempfile
+
+# 仅在 Windows 系统上导入 winreg
+if platform.system() == "Windows":
+    import winreg
 
 # 配置日志
 def setup_logging():
@@ -48,6 +52,11 @@ def get_install_location_from_registry() -> Optional[str]:
     """
     从 Windows 注册表中查找 Cursor 的安装位置
     """
+    # 如果不是 Windows 系统，直接返回 None
+    if platform.system() != "Windows":
+        logger.debug("非 Windows 系统，跳过注册表查找")
+        return None
+        
     logger.debug("开始从注册表查找 Cursor 安装位置...")
     registry_paths = [
         (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{DADADADA-ADAD-ADAD-ADAD-ADADADADADAD}}_is1"),
@@ -101,114 +110,149 @@ def get_cursor_process_path() -> Optional[str]:
 
 async def find_cursor_exe() -> Optional[str]:
     """
-    在Windows系统中查找Cursor.exe的路径
+    查找Cursor.exe或Cursor应用的路径
 
     Returns:
-        Optional[str]: 如果找到则返回Cursor.exe的完整路径，否则返回None
+        Optional[str]: 如果找到则返回Cursor可执行文件的完整路径，否则返回None
     """
-    logger.info("开始搜索 Cursor.exe...")
+    logger.info("开始搜索 Cursor 可执行文件...")
     
-    # 1. 首先从注册表查找
-    logger.info("查找注册表...")
-    cursor_exe = get_install_location_from_registry()
-    if cursor_exe:
-        return cursor_exe
-        
-    # 2. 从运行进程中查找
-    cursor_exe = get_cursor_process_path()
-    if cursor_exe:
-        return cursor_exe
+    system = platform.system()
+    
+    if system == "Windows":
+        # 1. 首先从注册表查找
+        logger.info("查找注册表...")
+        cursor_exe = get_install_location_from_registry()
+        if cursor_exe:
+            return cursor_exe
+            
+        # 2. 从运行进程中查找
+        cursor_exe = get_cursor_process_path()
+        if cursor_exe:
+            return cursor_exe
 
-    # 获取所有可能的驱动器
-    import string
-    from ctypes import windll
-    
-    def get_drives():
-        drives = []
-        bitmask = windll.kernel32.GetLogicalDrives()
-        for letter in string.ascii_uppercase:
-            if bitmask & 1:
-                drives.append(f"{letter}:")  # 不添加反斜杠，让 os.path.join 处理
-            bitmask >>= 1
-        return drives
-    
-    # 首先检查环境变量定义的路径（最常见的安装位置）
-    env_paths = [
-        os.path.join(os.getenv("LOCALAPPDATA", ""), "Programs", "Cursor"),
-        os.path.join(os.getenv("PROGRAMFILES", ""), "Cursor"),
-        os.path.join(os.getenv("PROGRAMFILES(X86)", ""), "Cursor"),
-        os.path.join(os.getenv("APPDATA", ""), "Programs", "Cursor"),
-        os.path.join(os.getenv("USERPROFILE", ""), "AppData", "Local", "Programs", "Cursor")
-    ]
-    
-    logger.info("检查环境变量定义的路径...")
-    for base_path in env_paths:
-        if base_path:
-            cursor_path = os.path.join(base_path, "Cursor.exe")
-            logger.debug(f"检查路径: {cursor_path}")
-            if os.path.isfile(cursor_path):
-                logger.info(f"找到 Cursor.exe: {cursor_path}")
-                return cursor_path
-    
-    # 检查所有驱动器下的常见安装位置
-    logger.info("检查所有驱动器下的安装位置...")
-    common_install_dirs = [
-        "Cursor",
-        "cursor",
-        os.path.join("Program Files", "Cursor"),
-        os.path.join("Program Files (x86)", "Cursor"),
-        os.path.join("Users", os.getenv("USERNAME", ""), "AppData", "Local", "Programs", "Cursor")
-    ]
-    
-    # 搜索所有驱动器
-    for drive in get_drives():
-        logger.debug(f"检查驱动器 {drive}")
-        for install_dir in common_install_dirs:
-            # 对于Windows，我们需要特殊处理驱动器路径
-            if platform.system() == "Windows":
+        # 获取所有可能的驱动器
+        import string
+        from ctypes import windll
+        
+        def get_drives():
+            drives = []
+            bitmask = windll.kernel32.GetLogicalDrives()
+            for letter in string.ascii_uppercase:
+                if bitmask & 1:
+                    drives.append(f"{letter}:")  # 不添加反斜杠，让 os.path.join 处理
+                bitmask >>= 1
+            return drives
+        
+        # 首先检查环境变量定义的路径（最常见的安装位置）
+        env_paths = [
+            os.path.join(os.getenv("LOCALAPPDATA", ""), "Programs", "Cursor"),
+            os.path.join(os.getenv("PROGRAMFILES", ""), "Cursor"),
+            os.path.join(os.getenv("PROGRAMFILES(X86)", ""), "Cursor"),
+            os.path.join(os.getenv("APPDATA", ""), "Programs", "Cursor"),
+            os.path.join(os.getenv("USERPROFILE", ""), "AppData", "Local", "Programs", "Cursor")
+        ]
+        
+        logger.info("检查环境变量定义的路径...")
+        for base_path in env_paths:
+            if base_path:
+                cursor_path = os.path.join(base_path, "Cursor.exe")
+                logger.debug(f"检查路径: {cursor_path}")
+                if os.path.isfile(cursor_path):
+                    logger.info(f"找到 Cursor.exe: {cursor_path}")
+                    return cursor_path
+        
+        # 检查所有驱动器下的常见安装位置
+        logger.info("检查所有驱动器下的安装位置...")
+        common_install_dirs = [
+            "Cursor",
+            "cursor",
+            os.path.join("Program Files", "Cursor"),
+            os.path.join("Program Files (x86)", "Cursor"),
+            os.path.join("Users", os.getenv("USERNAME", ""), "AppData", "Local", "Programs", "Cursor")
+        ]
+        
+        # 搜索所有驱动器
+        for drive in get_drives():
+            logger.debug(f"检查驱动器 {drive}")
+            for install_dir in common_install_dirs:
                 full_path = f"{drive}\\{install_dir}\\Cursor.exe"
-            else:
-                full_path = os.path.join(drive, install_dir, "Cursor.exe")
-            logger.debug(f"检查路径: {full_path}")
-            if os.path.isfile(full_path):
-                logger.info(f"找到 Cursor.exe: {full_path}")
-                return full_path
+                logger.debug(f"检查路径: {full_path}")
+                if os.path.isfile(full_path):
+                    logger.info(f"找到 Cursor.exe: {full_path}")
+                    return full_path
+        
+        # 检查环境变量PATH中的所有目录
+        if "PATH" in os.environ:
+            logger.info("在 PATH 环境变量中搜索...")
+            for path_dir in os.environ["PATH"].split(os.pathsep):
+                location = os.path.join(path_dir, "Cursor.exe")
+                logger.debug(f"检查 PATH 中的路径: {location}")
+                if os.path.isfile(location):
+                    logger.info(f"在 PATH 中找到 Cursor.exe: {location}")
+                    return location
+        
+        # 如果在常见位置没找到，尝试使用where命令
+        logger.info("使用 where 命令搜索 Cursor.exe...")
+        try:
+            import subprocess
+            result = subprocess.run(["where", "Cursor.exe"], 
+                                  capture_output=True, 
+                                  text=True, 
+                                  check=False)
+            if result.returncode == 0:
+                paths = result.stdout.strip().split('\n')
+                if paths:
+                    logger.info(f"使用 where 命令找到 Cursor.exe: {paths[0]}")
+                    return paths[0]  # 返回第一个找到的路径
+        except Exception as e:
+            logger.error(f"使用 where 命令搜索失败: {str(e)}")
     
-    # 检查环境变量PATH中的所有目录
-    if "PATH" in os.environ:
-        logger.info("在 PATH 环境变量中搜索...")
-        for path_dir in os.environ["PATH"].split(os.pathsep):
-            location = os.path.join(path_dir, "Cursor.exe")
-            logger.debug(f"检查 PATH 中的路径: {location}")
-            if os.path.isfile(location):
-                logger.info(f"在 PATH 中找到 Cursor.exe: {location}")
-                return location
-    
-    # 如果在常见位置没找到，尝试使用where命令
-    logger.info("使用 where 命令搜索 Cursor.exe...")
-    try:
-        import subprocess
-        result = subprocess.run(["where", "Cursor.exe"], 
-                              capture_output=True, 
-                              text=True, 
-                              check=False)
-        if result.returncode == 0:
-            paths = result.stdout.strip().split('\n')
-            if paths:
-                logger.info(f"使用 where 命令找到 Cursor.exe: {paths[0]}")
-                return paths[0]  # 返回第一个找到的路径
-    except Exception as e:
-        logger.error(f"使用 where 命令搜索失败: {str(e)}")
+    elif system == "Darwin":  # macOS
+        # 在 macOS 上查找 Cursor.app
+        common_paths = [
+            "/Applications/Cursor.app/Contents/MacOS/Cursor",
+            os.path.expanduser("~/Applications/Cursor.app/Contents/MacOS/Cursor")
+        ]
+        
+        for path in common_paths:
+            if os.path.isfile(path):
+                logger.info(f"在 macOS 上找到 Cursor: {path}")
+                return path
+                
+        # 从运行进程中查找
+        cursor_exe = get_cursor_process_path()
+        if cursor_exe:
+            return cursor_exe
+            
+    elif system == "Linux":
+        # 在 Linux 上查找 Cursor
+        common_paths = [
+            "/usr/bin/cursor",
+            "/usr/local/bin/cursor",
+            "/opt/Cursor/cursor",
+            "/usr/share/cursor/cursor"
+        ]
+        
+        for path in common_paths:
+            if os.path.isfile(path):
+                logger.info(f"在 Linux 上找到 Cursor: {path}")
+                return path
+                
+        # 从运行进程中查找
+        cursor_exe = get_cursor_process_path()
+        if cursor_exe:
+            return cursor_exe
     
     # 如果所有方法都失败了，提示用户输入路径
-    logger.warning("未找到 Cursor.exe，请手动输入Cursor.exe的完整路径")
+    logger.warning(f"未找到 Cursor 可执行文件，请手动输入完整路径")
     time.sleep(1)
-    user_path = input("请输入Cursor.exe的完整路径: ").strip()
+    user_path = input("请输入Cursor可执行文件的完整路径: ").strip()
     if os.path.isfile(user_path):
         logger.info(f"使用用户提供的路径: {user_path}")
         return user_path
         
-    logger.error("无法找到有效的Cursor.exe路径")
+    logger.error("无法找到有效的Cursor可执行文件路径")
     return None
 
 
