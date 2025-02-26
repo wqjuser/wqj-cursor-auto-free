@@ -975,7 +975,7 @@ async def main():
             # 在这里获取 PIN 码
             pin = input("\n请输入邮箱 PIN 码: ").strip()
             logging.info("PIN 码已输入")
-            browser_manager, _ = try_register(pin=pin)
+            browser_manager, is_success = try_register(pin=pin)
         else:
             is_success = True
 

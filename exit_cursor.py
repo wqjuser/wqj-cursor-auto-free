@@ -32,7 +32,6 @@ def ExitCursor(timeout=8):
                                 cursor_path = raw_path[:raw_path.find('.app') + 4]
                             else:  # Linux/Windows系统
                                 cursor_path = raw_path
-                            logging.info(f"Cursor 进程位于: {cursor_path}")
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         logging.warning(f"无法获取进程 (PID: {proc.pid}) 的文件路径")
                     cursor_processes.append(proc)
