@@ -25,6 +25,7 @@ from get_email_code import EmailVerificationHandler
 from logo import print_logo
 from config import Config
 from datetime import datetime
+import asyncio
 
 # 定义 EMOJI 字典
 EMOJI = {"ERROR": "❌", "WARNING": "⚠️", "INFO": "ℹ️"}
@@ -529,14 +530,14 @@ def show_menu():
         print("无效的选择，请重试")
 
 
-def restart_cursor():
+def restart_cursor(cursor_path):
     if cursor_path:
         print("现在可以重新启动 Cursor 了。")
 
         # 询问是否自动启动 Cursor
         restart = input("\n是否要重新启动 Cursor？(y/n): ").strip().lower()
         if restart == 'y':
-            inner_restart_cursor()
+            inner_restart_cursor(cursor_path)
         else:
             sys.exit(0)
     else:
@@ -545,7 +546,7 @@ def restart_cursor():
         sys.exit(0)
 
 
-def inner_restart_cursor():
+def inner_restart_cursor(cursor_path):
     try:
         logging.info(f"正在重新启动 Cursor: {cursor_path}")
         if os.name == 'nt':
@@ -747,7 +748,24 @@ def batch_register(num_accounts, pin=''):
             logging.error(f"保存账号信息到文件时出错: {str(e)}")
 
 
-if __name__ == "__main__":
+async def reset_machine_id():
+    """重置机器ID"""
+    try:
+        # 使用asyncio.run运行异步方法
+        await MachineIDResetter().reset_machine_ids()
+    except Exception as e:
+        logging.error(f"重置机器ID时出错: {str(e)}")
+
+
+async def restore_machine_id():
+    """恢复机器ID"""
+    try:
+        await MachineIDResetter().restore_machine_ids()
+    except Exception as e:
+        logging.error(f"恢复机器ID时出错: {str(e)}")
+
+
+async def main():
     if not is_admin():
         request_admin()
 
@@ -759,31 +777,33 @@ if __name__ == "__main__":
     if choice == 2:
         success, _ = ExitCursor()
         if success:
-            MachineIDResetter().reset_machine_ids()
-            print("\n文件或设备信息修改成功，按回车键退出...", end='', flush=True)
-            input()
+            await reset_machine_id()  # 直接await异步函数
+            # 等待一会儿让日志完全显示
+            time.sleep(1)
+            input("\n文件或设备信息重置成功，按回车键退出...")
             sys.exit(0)
         else:
-            print("Cursor 未能自动关闭，请手动关闭后重试")
+            logging.error("Cursor 未能自动关闭，请手动关闭后重试")
+            input("\n按回车键退出...")
             sys.exit(0)
     elif choice == 3:
         success, _ = ExitCursor()
         if success:
-            MachineIDResetter().restore_machine_ids()
-            print("\n文件或设备信息恢复成功，按回车键退出...", end='', flush=True)
-            input()
+            await restore_machine_id()  # 直接await异步函数
+             # 等待一会儿让日志完全显示
+            time.sleep(1)
+            input("\n文件或设备信息恢复成功，按回车键退出...")
             sys.exit(0)
         else:
-            print("Cursor 未能自动关闭，请手动关闭后重试")
+            logging.error("Cursor 未能自动关闭，请手动关闭后重试")
             sys.exit(0)
     elif choice == 4:
         success, _ = ExitCursor()
         if success:
             logging.info('开始重置设备信息...')
-            resetter = MachineIDResetter()
             try:
                 # 执行重置并等待完成
-                resetter.reset_machine_ids()
+                await reset_machine_id()
                 logging.info('设备信息重置完成')
 
                 # 添加一个短暂的延迟确保文件操作完全完成
@@ -829,7 +849,7 @@ if __name__ == "__main__":
                         browser_manager.quit()
 
                 if is_success:
-                    restart_cursor()
+                    restart_cursor(cursor_path)
                 else:
                     print("\n登录失败，按回车键退出...", end='', flush=True)
                     input()
@@ -846,8 +866,7 @@ if __name__ == "__main__":
         # 首先重置设备信息
         success, cursor_path = ExitCursor()
         if success:
-            resetter = MachineIDResetter()
-            resetter.reset_machine_ids()
+            await reset_machine_id()
             # 添加一个短暂的延迟确保文件操作完全完成
             time.sleep(2)
             logging.info('开始替换账号')
@@ -855,7 +874,7 @@ if __name__ == "__main__":
             change_account = refresh_data.replace_account()
             time.sleep(2)
             # 重启Cursor并退出
-            restart_cursor()
+            restart_cursor(cursor_path)
         else:
             print("Cursor 未能自动关闭，请手动关闭后重试")
             sys.exit(0)
@@ -948,7 +967,7 @@ if __name__ == "__main__":
         success, cursor_path = ExitCursor()
 
         logging.info("处理Cursor...")
-        MachineIDResetter().reset_machine_ids()
+        await reset_machine_id()
         time.sleep(2)
         logging.info("\n是否需要注册账号？(y/n)")
         register = input().strip().lower()
@@ -973,8 +992,11 @@ if __name__ == "__main__":
 
         if is_success:
             # 重启Cursor并退出
-            restart_cursor()
+            restart_cursor(cursor_path)
         else:
             print("\n程序执行失败，按回车键退出...", end='', flush=True)
             input()
             sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())

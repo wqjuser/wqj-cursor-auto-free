@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import uuid
+import asyncio
 
 from colorama import Fore, Style, init
 
@@ -66,89 +67,80 @@ class MachineIDResetter:
             "telemetry.sqmId": sqm_id,
         }
 
-    def reset_machine_ids(self):
-        """重置机器ID并备份原文件"""
+    async def reset_machine_ids(self):
+        """重置机器ID并备份原始文件"""
         try:
-            pkg_path, _ = patch_cursor_get_machine_id.get_cursor_paths()
+            pkg_path, _ = await patch_cursor_get_machine_id.get_cursor_paths()
+            
             # 获取版本号
             try:
                 with open(pkg_path, "r", encoding="utf-8") as f:
                     version = json.load(f)["version"]
-                    print(f"{Fore.CYAN}{EMOJI['INFO']}当前 Cursor 版本: {version}{Style.RESET_ALL}")
             except Exception as e:
                 sys.exit(1)
             
             is_045_version = patch_cursor_get_machine_id.version_check(version, min_version="0.45.0")
-            print(f"{Fore.CYAN}{EMOJI['INFO']}正在检查配置文件...{Style.RESET_ALL}")
 
             # 检查文件是否存在
             if not os.path.exists(self.db_path):
-                print(
-                    f"{Fore.RED}{EMOJI['ERROR']}配置文件不存在: {self.db_path}{Style.RESET_ALL}"
-                )
+                print(f"{Fore.RED}{EMOJI['ERROR']}配置文件不存在: {self.db_path}{Style.RESET_ALL}")
                 return False
 
             # 检查文件权限
             if not os.access(self.db_path, os.R_OK | os.W_OK):
-                print(
-                    f"{Fore.RED}{EMOJI['ERROR']} 无法读写配置文件，请检查文件权限！{Style.RESET_ALL}"
-                )
-                print(
-                    f"{Fore.RED}{EMOJI['ERROR']} 如果你使用过 go-cursor-help 来修改 ID; 请修改文件只读权限 {self.db_path} {Style.RESET_ALL}"
-                )
+                print(f"{Fore.RED}{EMOJI['ERROR']} 无法读写配置文件，请检查文件权限！{Style.RESET_ALL}")
+                print(f"{Fore.RED}{EMOJI['ERROR']} 如果你使用过 go-cursor-help 来修改 ID; 请修改文件只读权限 {self.db_path} {Style.RESET_ALL}")
                 return False
 
             # 读取现有配置
-            print(f"{Fore.CYAN}{EMOJI['FILE']} 读取当前配置...{Style.RESET_ALL}")
             with open(self.db_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
 
             # 只在备份文件不存在时创建备份
             backup_path = f"{self.db_path}.backup"
             if not os.path.exists(backup_path):
-                print(f"{Fore.CYAN}{EMOJI['BACKUP']} 创建配置文件备份...{Style.RESET_ALL}")
                 with open(backup_path, "w", encoding="utf-8") as f:
                     json.dump(config, f, indent=4)
-                print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 备份文件已保存至: {backup_path}{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.CYAN}{EMOJI['INFO']} 已存在备份文件，跳过备份步骤{Style.RESET_ALL}")
 
             # 生成新的ID
-            print(f"{Fore.CYAN}{EMOJI['RESET']} 生成新的机器标识...{Style.RESET_ALL}")
             new_ids = self.generate_new_ids()
 
             # 更新配置
             config.update(new_ids)
 
             # 保存新配置
-            print(f"{Fore.CYAN}{EMOJI['FILE']} 保存新配置...{Style.RESET_ALL}")
             with open(self.db_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
 
+            # 在所有操作完成后，按顺序打印日志
+            print(f"\n{Fore.CYAN}{EMOJI['INFO']} 当前 Cursor 版本: {version}{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}{EMOJI['INFO']} 正在检查配置文件...{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}{EMOJI['FILE']} 读取当前配置...{Style.RESET_ALL}")
+            if not os.path.exists(backup_path):
+                print(f"{Fore.CYAN}{EMOJI['BACKUP']} 创建配置文件备份...{Style.RESET_ALL}")
+                print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 备份文件已保存至: {backup_path}{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.CYAN}{EMOJI['INFO']} 已存在备份文件，跳过备份步骤{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}{EMOJI['RESET']} 生成新的机器标识...{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}{EMOJI['FILE']} 保存新配置...{Style.RESET_ALL}")
             print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 机器标识重置成功！{Style.RESET_ALL}")
-            # print(f"\n{Fore.CYAN}新的机器标识:{Style.RESET_ALL}")
-            # for key, value in new_ids.items():
-            #     print(f"{EMOJI['INFO']} {key}: {Fore.GREEN}{value}{Style.RESET_ALL}")
 
-            if  is_045_version:
-                patch_cursor_get_machine_id.main(restore_mode=False)
+            if is_045_version:
+                await patch_cursor_get_machine_id.main(restore_mode=False)
             return True
 
         except PermissionError as e:
             print(f"{Fore.RED}{EMOJI['ERROR']} 权限错误: {str(e)}{Style.RESET_ALL}")
-            print(
-                f"{Fore.YELLOW}{EMOJI['INFO']} 请尝试以管理员身份运行此程序{Style.RESET_ALL}"
-            )
+            print(f"{Fore.YELLOW}{EMOJI['INFO']} 请尝试以管理员身份运行此程序{Style.RESET_ALL}")
             return False
         except Exception as e:
             print(f"{Fore.RED}{EMOJI['ERROR']} 重置过程出错: {str(e)}{Style.RESET_ALL}")
-
             return False
 
-    def restore_machine_ids(self):
+    async def restore_machine_ids(self):
         """从备份文件恢复机器ID"""
         try:
-            pkg_path, _ = patch_cursor_get_machine_id.get_cursor_paths()
+            pkg_path, _ = await patch_cursor_get_machine_id.get_cursor_paths()
             # 获取版本号
             try:
                 with open(pkg_path, "r", encoding="utf-8") as f:
@@ -192,8 +184,8 @@ class MachineIDResetter:
             #     if key in backup_config:
             #         print(f"{EMOJI['INFO']} {key}: {Fore.GREEN}{backup_config[key]}{Style.RESET_ALL}")
 
-            if  is_045_version:
-                patch_cursor_get_machine_id.main(restore_mode=True)
+            if is_045_version:
+                await patch_cursor_get_machine_id.main(restore_mode=True)
                 
             return True
             
@@ -212,11 +204,11 @@ if __name__ == "__main__":
 
     resetter = MachineIDResetter()
     
-    # 添加命令行参数支持
+    # 添加命令行参数支持并使用事件循环运行异步函数
     if len(sys.argv) > 1 and sys.argv[1] == '--restore':
-        resetter.restore_machine_ids()
+        asyncio.run(resetter.restore_machine_ids())
     else:
-        resetter.reset_machine_ids()
+        asyncio.run(resetter.reset_machine_ids())
 
     print(f"\n{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
     input(f"{EMOJI['INFO']} 按回车键退出...")
