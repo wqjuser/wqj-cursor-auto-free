@@ -8,12 +8,14 @@ import platform
 import re
 import shutil
 import sys
-import tempfile
 import time
 import winreg
 import psutil
 from typing import Tuple, Optional, List
 import asyncio
+import aiofiles
+import aiofiles.os
+import aiofiles.tempfile
 
 # 配置日志
 def setup_logging():
@@ -251,13 +253,10 @@ async def get_cursor_paths() -> Tuple[str, str]:
         # 首先尝试查找实际安装路径
         app_path = await get_cursor_app_path()
         if app_path:
-            logger.info(f"找到 Cursor 安装路径: {app_path}")
             resources_path = os.path.join(app_path, "resources", "app")
             if os.path.exists(resources_path):
                 pkg_path = os.path.join(resources_path, "package.json")
                 main_path = os.path.join(resources_path, "out", "main.js")
-                logger.info(f"找到 package.json 路径: {pkg_path}")
-                logger.info(f"找到 main.js 路径: {main_path}")
                 # 缓存找到的路径
                 get_cursor_paths.cached_paths = (pkg_path, main_path)
                 return get_cursor_paths.cached_paths
@@ -269,8 +268,6 @@ async def get_cursor_paths() -> Tuple[str, str]:
         base = os.path.join(os.getenv("LOCALAPPDATA", ""), "Programs", "Cursor", "resources", "app")
         pkg_path = os.path.join(base, "package.json")
         main_path = os.path.join(base, "out", "main.js")
-        logger.info(f"默认 package.json 路径: {pkg_path}")
-        logger.info(f"默认 main.js 路径: {main_path}")
         # 缓存找到的路径
         get_cursor_paths.cached_paths = (pkg_path, main_path)
         return get_cursor_paths.cached_paths
@@ -299,8 +296,6 @@ async def get_cursor_paths() -> Tuple[str, str]:
             pkg_path = os.path.join(base, paths_map["Linux"]["package"])
             if os.path.exists(pkg_path):
                 main_path = os.path.join(base, paths_map["Linux"]["main"])
-                logger.info(f"找到 package.json 路径: {pkg_path}")
-                logger.info(f"找到 main.js 路径: {main_path}")
                 # 缓存找到的路径
                 get_cursor_paths.cached_paths = (pkg_path, main_path)
                 return get_cursor_paths.cached_paths
@@ -311,8 +306,6 @@ async def get_cursor_paths() -> Tuple[str, str]:
     base_path = paths_map[system]["base"]
     pkg_path = os.path.join(base_path, paths_map[system]["package"])
     main_path = os.path.join(base_path, paths_map[system]["main"])
-    logger.info(f"找到 package.json 路径: {pkg_path}")
-    logger.info(f"找到 main.js 路径: {main_path}")
     # 缓存找到的路径
     get_cursor_paths.cached_paths = (pkg_path, main_path)
     return get_cursor_paths.cached_paths
@@ -379,9 +372,9 @@ def version_check(version: str, min_version: str = "", max_version: str = "") ->
         return False
 
 
-def modify_main_js(main_path: str) -> bool:
+async def modify_main_js(main_path: str) -> bool:
     """
-    修改 main.js 文件
+    异步修改 main.js 文件
 
     Args:
         main_path: main.js 文件路径
@@ -391,14 +384,15 @@ def modify_main_js(main_path: str) -> bool:
     """
     try:
         # 获取原始文件的权限和所有者信息
-        original_stat = os.stat(main_path)
+        original_stat = await aiofiles.os.stat(main_path)
         original_mode = original_stat.st_mode
         original_uid = original_stat.st_uid
         original_gid = original_stat.st_gid
 
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
-            with open(main_path, "r", encoding="utf-8") as main_file:
-                content = main_file.read()
+        tmp_path = None
+        async with aiofiles.tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
+            async with aiofiles.open(main_path, "r", encoding="utf-8") as main_file:
+                content = await main_file.read()
 
             # 执行替换
             patterns = {
@@ -409,25 +403,23 @@ def modify_main_js(main_path: str) -> bool:
             for pattern, replacement in patterns.items():
                 content = re.sub(pattern, replacement, content)
 
-            tmp_file.write(content)
+            await tmp_file.write(content)
             tmp_path = tmp_file.name
 
-        # 使用 shutil.copy2 保留文件权限
-        # shutil.copy2(main_path, main_path + ".old")
+        # 使用 shutil.move 移动文件
         shutil.move(tmp_path, main_path)
 
         # 恢复原始文件的权限和所有者
-        os.chmod(main_path, original_mode)
+        os.chmod(main_path, original_mode)  # 使用同步的 os.chmod
         if os.name != 'nt':  # 在非Windows系统上设置所有者
             os.chown(main_path, original_uid, original_gid)
 
         logger.info("main.js文件修改成功")
         return True
 
-
     except Exception as e:
         logger.error(f"修改文件时发生错误: {str(e)}")
-        if "tmp_path" in locals():
+        if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
         return False
 
@@ -447,7 +439,7 @@ def backup_files(pkg_path: str, main_path: str) -> bool:
         # 只备份 main.js
         backup_main = f"{main_path}.bak"
         if os.path.exists(backup_main):
-            logger.info(f"备份文件已存在，跳过备份步骤: {backup_main}")
+            logger.info(f"main.js已存在备份文件，跳过备份步骤")
             return True
             
         if os.path.exists(main_path):
@@ -513,7 +505,6 @@ async def main(restore_mode=False) -> None:
         try:
             with open(pkg_path, "r", encoding="utf-8") as f:
                 version = json.load(f)["version"]
-            logger.info(f"当前 Cursor 版本: {version}")
         except Exception as e:
             logger.error(f"无法读取版本号: {str(e)}")
             sys.exit(1)
@@ -531,7 +522,7 @@ async def main(restore_mode=False) -> None:
             sys.exit(1)
 
         # 修改文件
-        if not modify_main_js(main_path):
+        if not await modify_main_js(main_path):
             sys.exit(1)
 
 

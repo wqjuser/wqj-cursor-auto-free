@@ -51,7 +51,7 @@ class CursorAuthManager:
             updates.append(("cursorAuth/refreshToken", refresh_token))
 
         if not updates:
-            print("没有提供任何要更新的值")
+            logging.info("没有提供任何要更新的值")
             return False
 
         # 处理 account.json 文件
@@ -73,9 +73,9 @@ class CursorAuthManager:
             # 写入或更新文件
             with open(account_path, 'w', encoding='utf-8') as f:
                 json.dump(account_data, f)
-            print(f"成功更新: account.json文件")
+            logging.info(f"成功更新 account.json文件")
         except Exception as e:
-            print(f"处理account.json文件失败: {str(e)}")
+            logging.info(f"处理account.json文件失败: {str(e)}")
             return False
 
         conn = None
@@ -97,18 +97,18 @@ class CursorAuthManager:
                     cursor.execute(update_query, (value, key))
 
                 if cursor.rowcount > 0:
-                    print(f"成功更新 {key.split('/')[-1]}")
+                    logging.info(f"成功更新 {key.split('/')[-1]}")
                 else:
-                    print(f"未找到 {key.split('/')[-1]} 或值未变化")
+                    logging.info(f"未找到 {key.split('/')[-1]} 或值未变化")
 
             conn.commit()
             return True
 
         except sqlite3.Error as e:
-            print("数据库错误:", str(e))
+            logging.info("数据库错误:", str(e))
             return False
         except Exception as e:
-            print("发生错误:", str(e))
+            logging.info("发生错误:", str(e))
             return False
         finally:
             if conn:

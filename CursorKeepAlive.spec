@@ -19,6 +19,7 @@ a = Analysis(
     hiddenimports=[
         'cursor_auth_manager',
         'psutil',
+        'aiofiles',
         'DrissionPage',
         'colorama',
         'exit_cursor',

@@ -3,3 +3,4 @@ colorama
 python-dotenv
 psutil
 requests
+aiofiles

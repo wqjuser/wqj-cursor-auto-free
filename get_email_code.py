@@ -19,7 +19,7 @@ class EmailVerificationHandler:
         code = None
 
         try:
-            print("正在处理...")
+            logging.info("正在处理...")
 
             if self.imap is False:
                 # 等待并获取最新邮件
@@ -30,7 +30,7 @@ class EmailVerificationHandler:
                 code = self._get_mail_code_by_imap()
 
         except Exception as e:
-            print(f"获取验证码失败: {str(e)}")
+            logging.error(f"获取验证码失败: {str(e)}")
 
         return code
 
@@ -76,13 +76,13 @@ class EmailVerificationHandler:
                     mail.store(latest_mail_id, '+FLAGS', '\\Deleted')
                     mail.expunge()
                     mail.logout()
-                    # print(f"找到的验证码: {code}")
+                    # logging.info(f"找到的验证码: {code}")
                     return code
-            # print("未找到验证码")
+            # logging.info("未找到验证码")
             mail.logout()
             return None
         except Exception as e:
-            print(f"发生错误: {e}")
+            logging.error(f"发生错误: {e}")
             return None
 
     def _extract_imap_body(self, email_message):
@@ -169,4 +169,4 @@ class EmailVerificationHandler:
 if __name__ == "__main__":
     email_handler = EmailVerificationHandler()
     code = email_handler.get_verification_code()
-    print(code)
+    logging.info(code)

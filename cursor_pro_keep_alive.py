@@ -514,7 +514,7 @@ def sign_in_account(tab, email, password=None):
 
 def show_menu():
     """显示功能选择菜单"""
-    print("\n=== Cursor 工具 ===")
+    print("\n=== Cursor 工具 v0.2.5 ===")
     print("=== 此工具免费，如果你是通过购买获得请立即退款并举报卖家 ===\n")
     print("1. 一键注册并且享用Cursor")
     print("2. 仅仅修改文件或设备信息")
@@ -563,7 +563,7 @@ def inner_restart_cursor(cursor_path):
 
 
 def try_register(is_auto_register=False, pin=''):
-    global browser_manager, email_handler, sign_up_url, settings_url, account, password, first_name, last_name, is_success
+    global browser_manager, email_handler, sign_up_url, settings_url, account, password, first_name, last_name
     logging.info("\n开始注册账号")
 
     logging.info("正在初始化浏览器...")
@@ -597,6 +597,7 @@ def try_register(is_auto_register=False, pin=''):
     tab.run_js("try { turnstile.reset() } catch(e) { }")
     logging.info(f"正在访问登录页面: {login_url}")
     tab.get(login_url)
+    is_success = False
     if sign_up_account(tab, is_auto_register):
         if not is_auto_register:
             logging.info("正在获取会话令牌...")
@@ -969,8 +970,7 @@ async def main():
         logging.info("处理Cursor...")
         await reset_machine_id()
         time.sleep(2)
-        logging.info("\n是否需要注册账号？(y/n)")
-        register = input().strip().lower()
+        register = input("\n是否需要注册账号？(y/n)").strip().lower()
         if register == "y":
             # 在这里获取 PIN 码
             pin = input("\n请输入邮箱 PIN 码: ").strip()
