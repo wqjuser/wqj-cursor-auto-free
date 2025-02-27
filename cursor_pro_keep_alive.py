@@ -967,10 +967,10 @@ async def main():
     is_success = False
     try:
         logging.info("\n=== 初始化程序 ===")
-        # success, cursor_path = ExitCursor()
-        # logging.info("处理Cursor...")
-        # await reset_machine_id()
-        # time.sleep(2)
+        success, cursor_path = ExitCursor()
+        logging.info("处理Cursor...")
+        await reset_machine_id()
+        time.sleep(2)
         register = input("\n是否需要注册账号？(y/n)").strip().lower()
         if register == "y":
             browser_manager, is_success = try_register()
