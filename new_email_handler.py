@@ -2,9 +2,19 @@ import requests
 from typing import Optional, Dict, Any
 import re
 import time
+import os
+from dotenv import load_dotenv
 
 class EmailHandler:
-    DEFAULT_API_KEY = "mk_DON_yo3Be6Yz9gux5LQe3xp_MO-QpCtM"
+    # 加载 .env 文件
+    load_dotenv()
+    
+    # 从环境变量获取配置，如果不存在则使用默认值
+    DEFAULT_API_KEY = os.getenv("EMAIL_API_KEY", "mk_DON_yo3Be6Yz9gux5LQe3xp_MO-QpCtM")
+    
+    # 处理 base_url，确保正确拼接 /api
+    _base_url = os.getenv("EMAIL_BASE_URL", "https://mailnet.space").rstrip('/')
+    DEFAULT_BASE_URL = _base_url if _base_url.endswith('/api') else f"{_base_url}/api"
     
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -14,7 +24,7 @@ class EmailHandler:
             api_key: API密钥，如果不传入则使用默认值
         """
         self.api_key = api_key or self.DEFAULT_API_KEY
-        self.base_url = "https://mailnet.space/api"
+        self.base_url = self.DEFAULT_BASE_URL
         self.headers = {
             "X-API-Key": self.api_key,
             "Content-Type": "application/json"

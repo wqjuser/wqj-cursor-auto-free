@@ -74,7 +74,19 @@ class Config:
             # 加载 .env 文件，设置 override=False 防止创建新文件
             load_dotenv(dotenv_path, override=False)
 
-            self.domain = os.getenv("DOMAIN", self.domain).strip()
+            env_domain = os.getenv("DOMAIN")
+            if env_domain and self.check_is_valid(env_domain):
+                try:
+                    # 尝试解析环境变量中的域名数组
+                    domains = eval(env_domain)
+                    if isinstance(domains, list) and len(domains) > 0:
+                        self.domain = random.choice(domains).strip()
+                    else:
+                        self.domain = env_domain.strip()
+                except:
+                    # 如果解析失败，使用原始字符串
+                    self.domain = env_domain.strip()
+            
             env_temp_mail = os.getenv("TEMP_MAIL", "").strip()
 
             # 只有当环境变量中存在 TEMP_MAIL 时才覆盖默认值
@@ -111,12 +123,19 @@ class Config:
 
     def get_domain(self):
         """返回域名
-        如果存在环境变量配置的域名，则返回配置的域名
-        否则随机返回一个域名
+        如果存在环境变量配置的域名，则从配置的域名数组中随机返回一个
+        否则随机返回一个默认域名
         """
         env_domain = os.getenv("DOMAIN")
         if env_domain and self.check_is_valid(env_domain):
-            return env_domain.strip()
+            try:
+                # 尝试解析环境变量中的域名数组
+                domains = eval(env_domain)
+                if isinstance(domains, list) and len(domains) > 0:
+                    return random.choice(domains).strip()
+            except:
+                # 如果解析失败，返回原始字符串
+                return env_domain.strip()
         return random.choice(self._domains)
 
     def check_config(self):
@@ -126,16 +145,26 @@ class Config:
         1. 如果使用 tempmail.plus，需要配置 TEMP_MAIL 和 DOMAIN
         2. 如果使用 IMAP，需要配置 IMAP_SERVER、IMAP_PORT、IMAP_USER、IMAP_PASS
         3. IMAP_DIR 是可选的
+        4. DOMAIN 可以是单个域名或域名数组
         """
-        # 基础配置检查
-        required_configs = {
-            "domain": "域名",
-        }
-
-        # 检查基础配置
-        for key, name in required_configs.items():
-            if not self.check_is_valid(getattr(self, key)):
-                raise ValueError(f"{name}未配置，请在 .env 文件中设置 {key.upper()}")
+        # 检查域名配置
+        env_domain = os.getenv("DOMAIN")
+        if env_domain:
+            try:
+                domains = eval(env_domain)
+                if isinstance(domains, list):
+                    if not domains:
+                        raise ValueError("域名数组不能为空，请在 .env 文件中正确设置 DOMAIN")
+                    for domain in domains:
+                        if not self.check_is_valid(domain):
+                            raise ValueError(f"域名数组中存在无效域名: {domain}")
+                elif not self.check_is_valid(env_domain):
+                    raise ValueError("域名配置无效，请在 .env 文件中正确设置 DOMAIN")
+            except:
+                if not self.check_is_valid(env_domain):
+                    raise ValueError("域名配置无效，请在 .env 文件中正确设置 DOMAIN")
+        elif not self.check_is_valid(self.domain):
+            raise ValueError("域名未配置，请在 .env 文件中设置 DOMAIN")
 
         # 检查邮箱配置
         if self.temp_mail != "null":

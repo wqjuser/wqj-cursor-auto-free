@@ -515,7 +515,7 @@ def sign_in_account(tab, email, password=None):
 
 def show_menu():
     """显示功能选择菜单"""
-    print("\n=== Cursor 工具 v0.2.7 ===")
+    print("\n=== Cursor 工具 v0.2.8 ===")
     print("=== 此工具免费，如果你是通过购买获得请立即退款并举报卖家 ===\n")
     print("1. 一键注册并且享用Cursor")
     print("2. 仅仅修改文件或设备信息")
