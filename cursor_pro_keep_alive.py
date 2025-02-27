@@ -11,6 +11,7 @@ import requests  # 添加到文件顶部的导入部分
 import refresh_data
 from exit_cursor import ExitCursor
 from reset_machine import MachineIDResetter
+from new_email_handler import EmailHandler
 
 # 禁用不必要的日志输出
 os.environ["PYTHONVERBOSE"] = "0"
@@ -579,8 +580,8 @@ def try_register(is_auto_register=False, pin=''):
     # 获取并打印浏览器的user-agent
     user_agent = browser.latest_tab.run_js("return navigator.userAgent")
     logging.info("正在初始化邮箱验证模块...")
-    email_handler = EmailVerificationHandler(pin=pin)
-
+    # email_handler = EmailVerificationHandler(pin=pin)
+    new_email_handler = EmailHandler()
     logging.info("\n=== 配置信息 ===")
     login_url = "https://authenticator.cursor.sh"
     sign_up_url = "https://authenticator.cursor.sh/sign-up"
@@ -593,8 +594,12 @@ def try_register(is_auto_register=False, pin=''):
     first_name = account_info["first_name"]
     last_name = account_info["last_name"]
     logging.info(f"生成的邮箱账号: {account}")
+    new_emailbox = new_email_handler.generate_email(email=account)
+    logging.info(f"生成的邮箱账号信息: {new_emailbox}")
+    return
     tab = browser.latest_tab
     tab.run_js("try { turnstile.reset() } catch(e) { }")
+    
     logging.info(f"正在访问登录页面: {login_url}")
     tab.get(login_url)
     is_success = False
@@ -965,11 +970,10 @@ async def main():
     is_success = False
     try:
         logging.info("\n=== 初始化程序 ===")
-        success, cursor_path = ExitCursor()
-
-        logging.info("处理Cursor...")
-        await reset_machine_id()
-        time.sleep(2)
+        # success, cursor_path = ExitCursor()
+        # logging.info("处理Cursor...")
+        # await reset_machine_id()
+        # time.sleep(2)
         register = input("\n是否需要注册账号？(y/n)").strip().lower()
         if register == "y":
             # 在这里获取 PIN 码

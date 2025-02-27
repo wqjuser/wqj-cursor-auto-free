@@ -1,0 +1,27 @@
+# 生成临时邮箱
+curl -X POST https://mailnet.space/api/emails/generate \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "test",
+    "expiryTime": 3600000,
+    "domain": "moemail.app"
+  }'
+# 获取邮箱列表
+curl https://mailnet.space/api/emails?cursor=CURSOR \
+  -H "X-API-Key: YOUR_API_KEY"
+# 获取邮件列表
+curl https://mailnet.space/api/emails/{emailId}?cursor=CURSOR \
+  -H "X-API-Key: YOUR_API_KEY"
+# 获取单封邮件
+curl https://mailnet.space/api/emails/{emailId}/{messageId} \
+  -H "X-API-Key: YOUR_API_KEY"
+
+注意：
+请将 YOUR_API_KEY 替换为你的实际 API Key 这里是mk_DON_yo3Be6Yz9gux5LQe3xp_MO-QpCtM
+emailId 是邮箱的唯一标识符
+messageId 是邮件的唯一标识符
+expiryTime 是邮箱的有效期（毫秒），可选值：3600000（1小时）、86400000（1天）、604800000（7天）、0（永久）
+domain 是邮箱域名，可通过 /api/emails/domains 获取可用域名列表
+cursor 用于分页，从上一次请求的响应中获取 nextCursor
+所有请求都需要包含 X-API-Key 请求头

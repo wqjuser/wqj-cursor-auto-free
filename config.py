@@ -36,8 +36,7 @@ class Config:
         self._domains = [
             "wqj666.ggff.net",
             "wqjsonder.ggff.net",
-            # "cemail.site",
-            # "mailnet.space"
+            "wqjnb.ggff.net",
             ]
         # 设置默认值
         self.imap = False
