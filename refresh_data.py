@@ -4,15 +4,16 @@ import os
 import random
 import sys
 import time
+import urllib.parse
 from datetime import datetime, timedelta, UTC, timezone
 from typing import Optional, Dict, List
-import urllib.parse
+
 import requests
 
 from browser_utils import BrowserManager
 from config import Config
 from cursor_auth_manager import CursorAuthManager
-from get_email_code import EmailVerificationHandler
+from new_email_handler import EmailHandler
 
 # 配置日志
 logging.basicConfig(
@@ -210,7 +211,7 @@ def show_menu():
 
 
 def sign_up_account(tab, email: str, password: str, first_name: str, last_name: str,
-                    email_handler: EmailVerificationHandler) -> bool | None:
+                    email_handler: EmailHandler, email_box_id: str) -> bool | None:
     """注册Cursor账号"""
     logging.info(f"=== 开始注册账号: {email} ===")
     sign_up_url = "https://authenticator.cursor.sh/sign-up"
@@ -264,7 +265,7 @@ def sign_up_account(tab, email: str, password: str, first_name: str, last_name: 
                 return True
             elif tab.ele("@data-index=0"):
                 logging.info("正在获取邮箱验证码...")
-                code = email_handler.get_verification_code()
+                code = email_handler.wait_for_verification_code(email_box_id)
                 if not code:
                     logging.error("获取验证码失败")
                     return False
@@ -307,7 +308,7 @@ def switch_proxy() -> bool:
             # 筛选出以"专线"和"Lv"开头的代理
             valid_proxies = [
                 proxy for proxy in all_proxies
-                if proxy.startswith(('专线', 'Lv'))
+                if proxy.startswith(('专线', 'Lv')) and ('x' not in proxy)
             ]
 
             if valid_proxies:
@@ -382,18 +383,15 @@ def get_user_agent():
         logging.error(f"获取user agent失败: {str(e)}")
         return None
 
+
 def batch_register(num_accounts):
     """批量注册账号
     Args:
         num_accounts: 要注册的账号数量
     """
-    # 获取邮箱PIN码
-    pin = input("\n请输入邮箱 PIN 码: ").strip()
-    logging.info("PIN 码已输入")
     logging.info("正在初始化邮箱验证模块...")
     # 初始化邮箱验证处理器
-    email_handler = EmailVerificationHandler(pin=pin)
-
+    email_handler = EmailHandler()
     successful_accounts = []
     failed_attempts = 0
 
@@ -430,9 +428,10 @@ def batch_register(num_accounts):
             password = account_info["password"]
             first_name = account_info["first_name"]
             last_name = account_info["last_name"]
-
+            new_email_box = email_handler.generate_email(email=email)
+            email_box_id = new_email_box['id']
             # 注册账号
-            if sign_up_account(tab, email, password, first_name, last_name, email_handler):
+            if sign_up_account(tab, email, password, first_name, last_name, email_handler, email_box_id):
                 # 获取会话令牌
                 tokens = get_cursor_session_token(tab)
                 if tokens:
@@ -666,7 +665,7 @@ def replace_account():
         access_token=account["access_token"],
         refresh_token=account["refresh_token"],
         user_id=account["user_id"],
-        only_refresh = True
+        only_refresh=True
     )
 
     if is_updated:

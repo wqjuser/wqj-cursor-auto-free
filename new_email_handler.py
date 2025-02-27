@@ -1,5 +1,7 @@
 import requests
 from typing import Optional, Dict, Any
+import re
+import time
 
 class EmailHandler:
     DEFAULT_API_KEY = "mk_DON_yo3Be6Yz9gux5LQe3xp_MO-QpCtM"
@@ -96,6 +98,94 @@ class EmailHandler:
         url = f"{self.base_url}/emails/{email_id}/{message_id}"
         response = requests.get(url, headers=self.headers)
         return response.json()
+        
+    def delete_message(self, email_id: str, message_id: str) -> Dict[str, Any]:
+        """
+        删除指定的单封邮件
+        
+        Args:
+            email_id: 邮箱ID
+            message_id: 邮件ID
+            
+        Returns:
+            删除操作的响应结果
+        """
+        url = f"{self.base_url}/emails/{email_id}/{message_id}"
+        response = requests.delete(url, headers=self.headers)
+        return response.json()
+        
+    def delete_email(self, email_id: str) -> Dict[str, Any]:
+        """
+        删除指定的邮箱
+        
+        Args:
+            email_id: 要删除的邮箱ID
+            
+        Returns:
+            删除操作的响应结果
+        """
+        url = f"{self.base_url}/emails/{email_id}"
+        response = requests.delete(url, headers=self.headers)
+        return response.json()
+        
+    def wait_for_verification_code(self, email_id: str, max_attempts: int = 20, interval: int = 3) -> str:
+        """
+        轮询等待邮件并获取验证码
+        
+        Args:
+            email_id: 邮箱ID
+            max_attempts: 最大尝试次数，默认20次
+            interval: 每次尝试的间隔时间（秒），默认3秒
+            
+        Returns:
+            提取到的验证码，如果未找到则返回空字符串
+        """
+        for attempt in range(max_attempts):
+            
+            # 获取邮件列表
+            message_list = self.get_message_list(email_id)
+            
+            # 检查是否有邮件
+            if message_list.get('messages') and len(message_list['messages']) > 0:
+                # 获取第一封邮件的ID
+                message_id = message_list['messages'][0]['id']
+                # 尝试提取验证码
+                verification_code = self.extract_verification_code(email_id, message_id)
+                if verification_code:
+                    return verification_code
+            
+            # 如果还没到最后一次尝试，等待一段时间后继续
+            if attempt < max_attempts - 1:
+                time.sleep(interval)
+
+        return ""
+        
+    def extract_verification_code(self, email_id: str, message_id: str) -> str:
+        """
+        获取邮件详情并提取其中的验证码，如果成功获取验证码则删除该邮件和邮箱
+        
+        Args:
+            email_id: 邮箱ID
+            message_id: 邮件ID
+            
+        Returns:
+            提取到的6位验证码，如果未找到则返回空字符串
+        """
+        # 获取邮件详情
+        message_detail = self.get_message_detail(email_id, message_id)
+        
+        # 获取邮件内容
+        if 'message' in message_detail and 'content' in message_detail['message']:
+            content = message_detail['message']['content']
+            # 使用正则表达式匹配6位数字
+            match = re.search(r'\b\d{6}\b', content)
+            if match:
+                verification_code = match.group(0)
+                # 删除邮箱
+                self.delete_email(email_id)
+                return verification_code
+        
+        return ""
 
 # 使用示例
 if __name__ == "__main__":

@@ -10,8 +10,8 @@ import requests  # 添加到文件顶部的导入部分
 
 import refresh_data
 from exit_cursor import ExitCursor
-from reset_machine import MachineIDResetter
 from new_email_handler import EmailHandler
+from reset_machine import MachineIDResetter
 
 # 禁用不必要的日志输出
 os.environ["PYTHONVERBOSE"] = "0"
@@ -22,7 +22,6 @@ import random
 from cursor_auth_manager import CursorAuthManager
 from logger import logging
 from browser_utils import BrowserManager
-from get_email_code import EmailVerificationHandler
 from logo import print_logo
 from config import Config
 from datetime import datetime
@@ -331,7 +330,8 @@ def sign_up_account(tab, is_auto_register=False):
                 break
             if tab.ele("@data-index=0"):
                 logging.info("正在获取邮箱验证码...")
-                code = email_handler.get_verification_code()
+                # code = email_handler.get_verification_code()
+                code = new_email_handler.wait_for_verification_code(email_box_id)
                 if not code:
                     logging.error("获取验证码失败")
                     return False
@@ -563,8 +563,8 @@ def inner_restart_cursor(cursor_path):
         os._exit(1)
 
 
-def try_register(is_auto_register=False, pin=''):
-    global browser_manager, email_handler, sign_up_url, settings_url, account, password, first_name, last_name
+def try_register(is_auto_register=False):
+    global browser_manager, email_handler, sign_up_url, settings_url, account, password, first_name, last_name, email_box_id, new_email_handler
     logging.info("\n开始注册账号")
 
     logging.info("正在初始化浏览器...")
@@ -593,13 +593,11 @@ def try_register(is_auto_register=False, pin=''):
     password = account_info["password"]
     first_name = account_info["first_name"]
     last_name = account_info["last_name"]
-    logging.info(f"生成的邮箱账号: {account}")
-    new_emailbox = new_email_handler.generate_email(email=account)
-    logging.info(f"生成的邮箱账号信息: {new_emailbox}")
-    return
     tab = browser.latest_tab
     tab.run_js("try { turnstile.reset() } catch(e) { }")
-    
+    new_email_box = new_email_handler.generate_email(email=account)
+    email_box_id = new_email_box['id']
+    logging.info(f"生成的邮箱账号: {account}")
     logging.info(f"正在访问登录页面: {login_url}")
     tab.get(login_url)
     is_success = False
@@ -622,7 +620,7 @@ def try_register(is_auto_register=False, pin=''):
     return browser_manager, is_success
 
 
-def batch_register(num_accounts, pin=''):
+def batch_register(num_accounts):
     """批量注册账号
     Args:
         num_accounts: 要注册的账号数量
@@ -711,7 +709,7 @@ def batch_register(num_accounts, pin=''):
         logging.info(f"\n=== 开始注册第 {i + 1}/{num_accounts} 个账号 ===")
         browser_manager = None
         try:
-            browser_manager, is_success = try_register(is_auto_register=True, pin=pin)
+            browser_manager, is_success = try_register(is_auto_register=True)
             if is_success:
                 successful_accounts.append({
                     'email': account,
@@ -796,7 +794,7 @@ async def main():
         success, _ = ExitCursor()
         if success:
             await restore_machine_id()  # 直接await异步函数
-             # 等待一会儿让日志完全显示
+            # 等待一会儿让日志完全显示
             time.sleep(1)
             input("\n文件或设备信息恢复成功，按回车键退出...")
             sys.exit(0)
@@ -961,7 +959,6 @@ async def main():
         except Exception as e:
             logging.error(f"更换浏览器指纹时出错: {str(e)}")
             sys.exit(1)
-
     elif choice == 666:  # not show user and user do not have refresh_data file
         refresh_data.main()
 
@@ -976,10 +973,7 @@ async def main():
         # time.sleep(2)
         register = input("\n是否需要注册账号？(y/n)").strip().lower()
         if register == "y":
-            # 在这里获取 PIN 码
-            pin = input("\n请输入邮箱 PIN 码: ").strip()
-            logging.info("PIN 码已输入")
-            browser_manager, is_success = try_register(pin=pin)
+            browser_manager, is_success = try_register()
         else:
             is_success = True
 
@@ -1001,6 +995,7 @@ async def main():
             print("\n程序执行失败，按回车键退出...", end='', flush=True)
             input()
             sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
