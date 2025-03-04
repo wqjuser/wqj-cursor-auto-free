@@ -515,20 +515,75 @@ def sign_in_account(tab, email, password=None):
 
 def show_menu():
     """显示功能选择菜单"""
-    print("\n=== Cursor 工具 v0.2.8 ===")
+    print(f"\n=== Cursor 工具 v{Config().get_version()} ===")
     print("=== 此工具免费，如果你是通过购买获得请立即退款并举报卖家 ===\n")
+    print("=== 开始检查版本... ===")
+
+    check_version()
+
     print("1. 一键注册并且享用Cursor")
     print("2. 仅仅修改文件或设备信息")
     print("3. 恢复原始文件或设备信息")
     print("4. 重置设备并登录已有账号")
     print("5. 重置设备并直接替换账号")
     print("6. 随机批量注册账号")
-
+    
     while True:
         choice = input("\n请选择功能 (1-6): ").strip()
         if choice in ['1', '2', '3', '4', '5', '6', '7', '666']:
             return int(choice)
         print("无效的选择，请重试")
+
+
+def check_version():
+    # 检查版本号
+    try:
+        headers = {
+            'Authorization': 'Bearer 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'
+        }
+        response = requests.get('https://api.github.com/repos/wqjuser/wqj-cursor-auto-free/tags', headers=headers)
+        if response.status_code == 200:
+            tags = response.json()
+            if tags:
+                latest_version = tags[0]['name'].replace('v', '')
+                current_version = Config().get_version()
+
+                # 将版本号分割成数字列表进行比较
+                latest_nums = [int(x) for x in latest_version.split('.')]
+                current_nums = [int(x) for x in current_version.split('.')]
+
+                # 比较每一位版本号
+                is_update_needed = False
+                for i in range(len(latest_nums)):
+                    if i >= len(current_nums):
+                        is_update_needed = True
+                        break
+                    if latest_nums[i] > current_nums[i]:
+                        is_update_needed = True
+                        break
+                    elif latest_nums[i] < current_nums[i]:
+                        break
+
+                if is_update_needed:
+                    print(f"\n发现新版本 v{latest_version}！")
+                    print(f"请访问 https://www.123912.com/s/AgAkjv-IMJ5d?提取码:Xv6M 下载最新版本")
+                else:
+                    print("当前已是最新版本")
+            else:
+                print("未找到版本信息")
+        else:
+            print(f"检查更新失败: HTTP {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        logging.debug(f"网络请求失败: {str(e)}")
+        print("检查更新失败: 网络连接错误，此错误不影响脚本的继续使用")
+    except ValueError as e:
+        logging.debug(f"解析版本号失败: {str(e)}")
+        print("检查更新失败: 版本号格式错误，此错误不影响脚本的继续使用")
+    except Exception as e:
+        logging.debug(f"检查版本更新时出错: {str(e)}")
+        print("检查更新失败: 未知错误，此错误不影响脚本的继续使用")
+    finally:
+        print("=" * 50)
 
 
 def restart_cursor(cursor_path):

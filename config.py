@@ -22,6 +22,8 @@ class Config:
             return
 
         self._initialized = True
+        
+        self.version = "0.2.9"
 
         # 获取应用程序的根目录路径
         if getattr(sys, "frozen", False):
@@ -109,6 +111,9 @@ class Config:
     def get_temp_mail(self):
 
         return self.temp_mail
+    
+    def get_version(self):
+        return self.version
 
     def get_imap(self):
         if not self.imap:
