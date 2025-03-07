@@ -62,7 +62,8 @@ exe = EXE(
     target_arch=target_arch,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None
+    icon=None,
+    manifest='app.manifest'  # 添加清单文件
 )
 
 # 如果在 Mac 上构建

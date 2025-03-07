@@ -52,48 +52,6 @@ def is_admin():
         return False
 
 
-def request_admin():
-    script_path = os.path.abspath(__file__)
-
-    if os.name == 'nt':  # Windows
-        if not is_admin():
-            try:
-                if getattr(sys, 'frozen', False):
-                    # 如果是打包后的可执行文件
-                    executable = sys.executable
-                    ret = ctypes.windll.shell32.ShellExecuteW(
-                        None,
-                        "runas",
-                        executable,
-                        None,  # 打包后的exe不需要额外参数
-                        None,
-                        1  # SW_NORMAL
-                    )
-                else:
-                    # 如果是 Python 脚本
-                    ret = ctypes.windll.shell32.ShellExecuteW(
-                        None,
-                        "runas",
-                        sys.executable,
-                        script_path,  # Python脚本需要作为参数传入
-                        None,
-                        1  # SW_NORMAL
-                    )
-
-                if ret <= 32:  # ShellExecute 返回值小于等于32表示失败
-                    raise Exception(f"ShellExecute failed with code {ret}")
-                sys.exit(0)  # 成功启动新进程后退出当前进程
-            except Exception as e:
-                print(f"请求管理员权限失败: {e}")
-                print("请右键以管理员身份运行此程序")
-                sys.exit(1)
-    else:  # macOS/Linux
-        if not is_admin():
-            print("\n需要管理员权限来运行此程序。")
-            print(f"请使用以下命令运行：\nsudo 脚本路径")
-            sys.exit(1)
-
-
 def save_screenshot(tab, stage: str, timestamp: bool = True) -> None:
     """
     保存页面截图
@@ -605,12 +563,18 @@ def restart_cursor(cursor_path):
 def inner_restart_cursor(cursor_path):
     try:
         logging.info(f"正在重新启动 Cursor: {cursor_path}")
-        if os.name == 'nt':
+        if os.name == 'nt':  # Windows系统
+            # 创建一个新的进程，使用runas命令以普通用户权限启动
+            current_user = os.environ.get('USERNAME')
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            subprocess.Popen([cursor_path], startupinfo=startupinfo, close_fds=True)
-        else:
+            
+            # 使用cmd /c命令以普通用户权限启动程序
+            cmd = f'cmd /c start "" "{cursor_path}"'
+            subprocess.Popen(cmd, shell=True, startupinfo=startupinfo)
+        else:  # macOS/Linux系统
             subprocess.Popen(['open', cursor_path])
+            
         logging.info("Cursor 已重新启动")
         os._exit(0)
     except Exception as exception:
@@ -825,9 +789,6 @@ async def restore_machine_id():
 
 
 async def main():
-    if not is_admin():
-        request_admin()
-
     print_logo()
 
     choice = show_menu()  # 只获取选择
