@@ -565,8 +565,6 @@ def inner_restart_cursor(cursor_path):
     try:
         logging.info(f"正在重新启动 Cursor: {cursor_path}")
         if os.name == 'nt':  # Windows系统
-            import subprocess
-            import ctypes
             
             # 确保cursor_path是有效的
             if not os.path.exists(cursor_path):

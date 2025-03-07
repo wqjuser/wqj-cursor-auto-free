@@ -4,4 +4,3 @@ python-dotenv
 psutil
 requests
 aiofiles
-pywin32
