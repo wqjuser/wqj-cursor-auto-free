@@ -176,12 +176,21 @@ def build(minimal=True):  # 默认为最简化版本
     finally:
         loading.stop()
 
-    exe_path = os.path.join(output_dir, "CursorPro.exe")
-    if os.path.exists(exe_path):
-        print(f"\n\033[92mBuild completed successfully!\033[0m")
-        print(f"\033[92mCursorPro.exe has been created at: {exe_path}\033[0m")
-    else:
-        print(f"\n\033[91mBuild failed: CursorPro.exe was not created\033[0m")
+    # 根据操作系统检查不同的输出文件
+    if system == "darwin":  # macOS
+        app_path = os.path.join(output_dir, "CursorPro.app")
+        if os.path.exists(app_path) and os.path.isdir(app_path):
+            print(f"\n\033[92mBuild completed successfully!\033[0m")
+            print(f"\033[92mCursorPro.app has been created at: {app_path}\033[0m")
+        else:
+            print(f"\n\033[91mBuild failed: CursorPro.app was not created\033[0m")
+    else:  # Windows 或 Linux
+        exe_path = os.path.join(output_dir, "CursorPro.exe" if system == "windows" else "CursorPro")
+        if os.path.exists(exe_path):
+            print(f"\n\033[92mBuild completed successfully!\033[0m")
+            print(f"\033[92m{os.path.basename(exe_path)} has been created at: {exe_path}\033[0m")
+        else:
+            print(f"\n\033[91mBuild failed: {os.path.basename(exe_path)} was not created\033[0m")
 
 
 if __name__ == "__main__":
