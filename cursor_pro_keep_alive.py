@@ -1,11 +1,10 @@
 import ctypes
 import os
-import subprocess
 import sys
 import urllib.parse
 from enum import Enum
 from typing import Optional
-
+import subprocess
 import requests  # 添加到文件顶部的导入部分
 
 import refresh_data
@@ -486,7 +485,7 @@ def show_menu():
     print("4. 重置设备并登录已有账号")
     print("5. 重置设备并直接替换账号")
     print("6. 随机批量注册账号")
-    
+
     while True:
         choice = input("\n请选择功能 (1-6): ").strip()
         if choice in ['1', '2', '3', '4', '5', '6', '7', '666']:
@@ -546,25 +545,31 @@ def check_version():
 
 
 def restart_cursor(cursor_path):
-    if cursor_path:
-        print("现在可以重新启动 Cursor 了。")
+    print("现在可以重新启动 Cursor 了，为避免Cursor程序的运行权限问题，不再支持脚本重启，请手动启动Cursor")
+    
+    # if cursor_path:
+    #     print("现在可以重新启动 Cursor 了。")
 
-        # 询问是否自动启动 Cursor
-        restart = input("\n是否要重新启动 Cursor？(y/n): ").strip().lower()
-        if restart == 'y':
-            inner_restart_cursor(cursor_path)
-        else:
-            sys.exit(0)
-    else:
-        print("\n按回车键退出...", end='', flush=True)
-        input()
-        sys.exit(0)
+    #     # 询问是否自动启动 Cursor
+    #     restart = input("\n是否要重新启动 Cursor？(y/n): ").strip().lower()
+    #     if restart == 'y':
+    #         inner_restart_cursor(cursor_path)
+    #     else:
+    #         sys.exit(0)
+    # else:
+    #     print("\n按回车键退出...", end='', flush=True)
+    #     input()
+    #     sys.exit(0)
 
 
 def inner_restart_cursor(cursor_path):
     try:
         logging.info(f"正在重新启动 Cursor: {cursor_path}")
         if os.name == 'nt':  # Windows系统
+
+            import ctypes
+            import tempfile
+            import uuid
             
             # 确保cursor_path是有效的
             if not os.path.exists(cursor_path):
@@ -575,66 +580,84 @@ def inner_restart_cursor(cursor_path):
             current_user = os.environ.get('USERNAME')
             logging.info(f"当前用户: {current_user}")
             
-            # 尝试多种方法启动Cursor
-            methods = [
-                # 方法1: 使用cmd /c start命令
-                {
-                    "name": "cmd start",
-                    "cmd": f'cmd /c start "" "{cursor_path}"',
-                    "shell": True
-                },
-                # 方法2: 使用explorer.exe启动
-                {
-                    "name": "explorer",
-                    "cmd": f'explorer.exe "{cursor_path}"',
-                    "shell": True
-                },
-                # 方法3: 直接启动
-                {
-                    "name": "direct",
-                    "cmd": f'"{cursor_path}"',
-                    "shell": True
-                }
-            ]
+            # 生成唯一的任务名称
+            task_name = f"StartCursor_{uuid.uuid4().hex[:8]}"
             
-            # 创建无窗口的启动信息
+            # 创建一个临时批处理文件来启动Cursor
+            temp_dir = tempfile.gettempdir()
+            batch_file = os.path.join(temp_dir, f"start_cursor_{task_name}.bat")
+            
+            # 批处理文件内容 - 直接启动Cursor
+            batch_content = f"""@echo off
+start "" "{cursor_path}"
+exit
+"""
+            
+            # 写入批处理文件
+            with open(batch_file, 'w') as f:
+                f.write(batch_content)
+            
+            logging.info(f"创建临时批处理文件: {batch_file}")
+            
+            # 使用schtasks命令创建一个立即运行的任务
+            # 这个任务会以当前用户的权限运行，而不是以管理员权限
+            cmd = f'schtasks /create /tn "{task_name}" /tr "{batch_file}" /sc once /st 00:00 /ru "{current_user}" /f'
+            logging.info(f"创建任务: {cmd}")
+            
+            # 创建任务
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = 0  # SW_HIDE
+            process = subprocess.Popen(cmd, shell=True, startupinfo=startupinfo, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
             
-            # 尝试每种方法
-            for method in methods:
+            if process.returncode != 0:
+                logging.error(f"创建任务失败: {stderr.decode('gbk', errors='ignore')}")
+                os._exit(1)
+                
+            # 立即运行任务
+            run_cmd = f'schtasks /run /tn "{task_name}"'
+            logging.info(f"运行任务: {run_cmd}")
+            process = subprocess.Popen(run_cmd, shell=True, startupinfo=startupinfo, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+            
+            if process.returncode != 0:
+                logging.error(f"运行任务失败: {stderr.decode('gbk', errors='ignore')}")
+                os._exit(1)
+                
+            # 等待一段时间确保进程启动
+            time.sleep(2)
+            
+            # 删除任务
+            delete_cmd = f'schtasks /delete /tn "{task_name}" /f'
+            subprocess.Popen(delete_cmd, shell=True, startupinfo=startupinfo)
+            
+            # 检查Cursor是否已启动
+            cursor_running = False
+            for proc in psutil.process_iter(['pid', 'name']):
                 try:
-                    logging.info(f"尝试使用 {method['name']} 方法启动Cursor")
-                    logging.info(f"执行命令: {method['cmd']}")
-                    subprocess.Popen(method['cmd'], shell=method['shell'], startupinfo=startupinfo)
-                    
-                    # 等待一段时间确保进程启动
-                    time.sleep(2)
-                    
-                    # 检查Cursor是否已启动
-                    cursor_running = False
-                    for proc in psutil.process_iter(['pid', 'name']):
-                        try:
-                            if proc.info['name'].lower() in ['cursor.exe', 'cursor']:
-                                cursor_running = True
-                                break
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                            continue
-                    
-                    if cursor_running:
-                        logging.info(f"使用 {method['name']} 方法成功启动Cursor")
+                    if proc.info['name'].lower() in ['cursor.exe', 'cursor']:
+                        cursor_running = True
                         break
-                    else:
-                        logging.warning(f"使用 {method['name']} 方法启动Cursor失败，尝试下一种方法")
-                except Exception as e:
-                    logging.error(f"使用 {method['name']} 方法启动失败: {str(e)}")
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
+            
+            if cursor_running:
+                logging.info("成功启动Cursor")
+            else:
+                logging.warning("启动Cursor失败")
+                
+            # 尝试清理临时文件
+            try:
+                os.remove(batch_file)
+                logging.info("已清理临时文件")
+            except Exception as e:
+                logging.warning(f"清理临时文件失败: {str(e)}")
+                
         else:  # macOS/Linux系统
             subprocess.Popen(['open', cursor_path])
             
         logging.info("Cursor 已重新启动")
-        os._exit(0)
+        # os._exit(0)
     except Exception as exception:
         logging.error(f"重启 Cursor 失败: {str(exception)}")
         os._exit(1)
@@ -1077,7 +1100,7 @@ if __name__ == "__main__":
         log_dir = "logs"
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        
+
         # 创建一个文件处理器，将日志写入文件
         log_file = os.path.join(log_dir, f"cursor_pro_{int(time.time())}.log")
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
@@ -1085,19 +1108,20 @@ if __name__ == "__main__":
         formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
         file_handler.setFormatter(formatter)
         logging.getLogger().addHandler(file_handler)
-        
+
         # 记录启动信息
         logging.info("程序启动")
-        
+
         # 运行主程序
         asyncio.run(main())
     except Exception as e:
         # 记录未捕获的异常
         import traceback
+
         error_msg = f"程序发生未捕获的异常: {str(e)}\n{traceback.format_exc()}"
         logging.error(error_msg)
         print(f"\n{error_msg}")
-        
+
         # 在程序崩溃时等待用户输入，防止窗口立即关闭
         input("\n程序发生错误，按回车键退出...")
     finally:
