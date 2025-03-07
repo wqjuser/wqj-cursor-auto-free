@@ -26,6 +26,7 @@ from logo import print_logo
 from config import Config
 from datetime import datetime
 import asyncio
+import psutil
 
 # 定义 EMOJI 字典
 EMOJI = {"ERROR": "❌", "WARNING": "⚠️", "INFO": "ℹ️"}
@@ -564,14 +565,73 @@ def inner_restart_cursor(cursor_path):
     try:
         logging.info(f"正在重新启动 Cursor: {cursor_path}")
         if os.name == 'nt':  # Windows系统
-            # 创建一个新的进程，使用runas命令以普通用户权限启动
+            import subprocess
+            import ctypes
+            
+            # 确保cursor_path是有效的
+            if not os.path.exists(cursor_path):
+                logging.error(f"Cursor路径不存在: {cursor_path}")
+                os._exit(1)
+                
+            # 获取当前用户名
             current_user = os.environ.get('USERNAME')
+            logging.info(f"当前用户: {current_user}")
+            
+            # 尝试多种方法启动Cursor
+            methods = [
+                # 方法1: 使用cmd /c start命令
+                {
+                    "name": "cmd start",
+                    "cmd": f'cmd /c start "" "{cursor_path}"',
+                    "shell": True
+                },
+                # 方法2: 使用explorer.exe启动
+                {
+                    "name": "explorer",
+                    "cmd": f'explorer.exe "{cursor_path}"',
+                    "shell": True
+                },
+                # 方法3: 直接启动
+                {
+                    "name": "direct",
+                    "cmd": f'"{cursor_path}"',
+                    "shell": True
+                }
+            ]
+            
+            # 创建无窗口的启动信息
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0  # SW_HIDE
             
-            # 使用cmd /c命令以普通用户权限启动程序
-            cmd = f'cmd /c start "" "{cursor_path}"'
-            subprocess.Popen(cmd, shell=True, startupinfo=startupinfo)
+            # 尝试每种方法
+            for method in methods:
+                try:
+                    logging.info(f"尝试使用 {method['name']} 方法启动Cursor")
+                    logging.info(f"执行命令: {method['cmd']}")
+                    subprocess.Popen(method['cmd'], shell=method['shell'], startupinfo=startupinfo)
+                    
+                    # 等待一段时间确保进程启动
+                    time.sleep(2)
+                    
+                    # 检查Cursor是否已启动
+                    cursor_running = False
+                    for proc in psutil.process_iter(['pid', 'name']):
+                        try:
+                            if proc.info['name'].lower() in ['cursor.exe', 'cursor']:
+                                cursor_running = True
+                                break
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            continue
+                    
+                    if cursor_running:
+                        logging.info(f"使用 {method['name']} 方法成功启动Cursor")
+                        break
+                    else:
+                        logging.warning(f"使用 {method['name']} 方法启动Cursor失败，尝试下一种方法")
+                except Exception as e:
+                    logging.error(f"使用 {method['name']} 方法启动失败: {str(e)}")
+                    continue
         else:  # macOS/Linux系统
             subprocess.Popen(['open', cursor_path])
             
@@ -1014,4 +1074,35 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        # 创建日志目录
+        log_dir = "logs"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        # 创建一个文件处理器，将日志写入文件
+        log_file = os.path.join(log_dir, f"cursor_pro_{int(time.time())}.log")
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+        file_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(file_handler)
+        
+        # 记录启动信息
+        logging.info("程序启动")
+        
+        # 运行主程序
+        asyncio.run(main())
+    except Exception as e:
+        # 记录未捕获的异常
+        import traceback
+        error_msg = f"程序发生未捕获的异常: {str(e)}\n{traceback.format_exc()}"
+        logging.error(error_msg)
+        print(f"\n{error_msg}")
+        
+        # 在程序崩溃时等待用户输入，防止窗口立即关闭
+        input("\n程序发生错误，按回车键退出...")
+    finally:
+        # 确保程序结束前等待用户输入
+        if 'PYTEST_CURRENT_TEST' not in os.environ:  # 非测试环境下
+            input("\n程序已完成，按回车键退出...")

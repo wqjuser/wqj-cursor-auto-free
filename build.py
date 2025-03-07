@@ -4,6 +4,8 @@ import platform
 import subprocess
 import time
 import threading
+import shutil
+import argparse
 
 # Ignore specific SyntaxWarning
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="DrissionPage")
@@ -79,7 +81,7 @@ def filter_output(output):
     return "\n".join(important_lines)
 
 
-def build():
+def build(minimal=True):  # 默认为最简化版本
     # Clear screen
     os.system("cls" if platform.system().lower() == "windows" else "clear")
 
@@ -88,11 +90,6 @@ def build():
 
     system = platform.system().lower()
     spec_file = os.path.join("CursorKeepAlive.spec")
-
-    # if system not in ["darwin", "windows"]:
-    #     print(f"\033[91mUnsupported operating system: {system}\033[0m")
-    #     return
-
     output_dir = f"dist/{system if system != 'darwin' else 'mac'}"
 
     # Create output directory
@@ -144,13 +141,12 @@ def build():
         simulate_progress("Running PyInstaller...", 2.0)
         loading.start("Building in progress")
         
-        # 修改这里，添加编码设置
         process = subprocess.Popen(
             pyinstaller_command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            encoding='utf-8',  # 指定编码
-            errors='ignore'    # 忽略无法解码的字符
+            encoding='utf-8',
+            errors='ignore'
         )
         
         stdout, stderr = process.communicate()
@@ -180,37 +176,13 @@ def build():
     finally:
         loading.stop()
 
-    # 修改文件复制部分
-    try:
-        # Copy config file
-        if os.path.exists("config.ini.example"):
-            simulate_progress("Copying configuration file...", 0.5)
-            if system == "windows":
-                config_src = os.path.abspath("config.ini.example")
-                config_dst = os.path.join(output_dir, "config.ini")
-                try:
-                    import shutil
-                    shutil.copy2(config_src, config_dst)
-                except Exception as e:
-                    print(f"\033[93mWarning: Failed to copy config file: {e}\033[0m")
-
-        # Copy .env.example file
-        if os.path.exists(".env.example"):
-            simulate_progress("Copying environment file...", 0.5)
-            if system == "windows":
-                env_src = os.path.abspath(".env.example")
-                env_dst = os.path.join(output_dir, ".env")
-                try:
-                    import shutil
-                    shutil.copy2(env_src, env_dst)
-                except Exception as e:
-                    print(f"\033[93mWarning: Failed to copy env file: {e}\033[0m")
-
-    except Exception as e:
-        print(f"\033[93mWarning: File copying failed: {e}\033[0m")
-
-    print(f"\n\033[92mBuild completed successfully! Output directory: {output_dir}\033[0m")
+    exe_path = os.path.join(output_dir, "CursorPro.exe")
+    if os.path.exists(exe_path):
+        print(f"\n\033[92mBuild completed successfully!\033[0m")
+        print(f"\033[92mCursorPro.exe has been created at: {exe_path}\033[0m")
+    else:
+        print(f"\n\033[91mBuild failed: CursorPro.exe was not created\033[0m")
 
 
 if __name__ == "__main__":
-    build()
+    build()  # 直接调用build函数，不需要任何参数
