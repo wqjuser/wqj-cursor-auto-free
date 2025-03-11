@@ -184,15 +184,21 @@ def sign_in_account(tab, email: str, password: str) -> bool:
 def get_available_accounts() -> List[Dict]:
     """获取可用账号列表"""
     try:
-        response = requests.get("https://accounts.zxai.fun/api/accounts/available")
+        from config import Config
+        config = Config()
+        api_url = config.get_api_available_accounts_url()
+        if not api_url:
+            logging.warning("无法获取可用账号API URL，跳过获取可用账号")
+            return []
+        response = requests.get(api_url)
         if response.status_code == 200:
             data = response.json()
             return data.get("accounts", [])
         else:
-            logging.error(f"获取账号列表失败，状态码: {response.status_code}")
+            logging.error(f"获取可用账号失败: {response.status_code}")
             return []
     except Exception as e:
-        logging.error(f"获取账号列表时出错: {str(e)}")
+        logging.error(f"获取可用账号出错: {str(e)}")
         return []
 
 
@@ -509,7 +515,12 @@ def save_account_to_api(email, password, credits=50, user_id=None, refresh_token
     Returns:
         bool: 是否保存成功
     """
-    api_url = "https://accounts.zxai.fun/api/accounts"
+    from config import Config
+    config = Config()
+    api_url = config.get_api_accounts_url()
+    if not api_url:
+        logging.warning("无法获取账号API URL，跳过保存账号到API")
+        return False
     payload = {
         "accounts": [
             {
@@ -544,14 +555,19 @@ def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_i
 
 
 def change_account_info(email: str) -> bool:
-    """标记账号为已使用状态
+    """标记账号为已使用
     Args:
-        email: 要标记的账号邮箱
+        email: 邮箱账号
     Returns:
         bool: 是否标记成功
     """
     logging.info(f"正在标记账号 {email} 为已使用状态...")
-    api_url = f"https://accounts.zxai.fun/api/accounts/{email}/mark-used"
+    from config import Config
+    config = Config()
+    api_url = config.get_api_mark_used_url(email)
+    if not api_url:
+        logging.warning(f"无法获取标记账号已使用的API URL，跳过标记账号 {email}")
+        return False
 
     try:
         response = requests.put(api_url)
@@ -650,7 +666,7 @@ def replace_account():
     # 获取可用账号
     accounts = get_available_accounts()
     if len(accounts) == 0:
-        logging.error("没有可用的账号")
+        logging.warning("没有可用的账号，API可能未配置或无可用账号")
         return False
 
     logging.info(f"获取到 {len(accounts)} 个可用账号")
@@ -670,17 +686,14 @@ def replace_account():
 
     if is_updated:
         # 标记账号为已使用
-        if change_account_info(account["email"]):
-            logging.info("账号替换完成")
-            logging.info(
-                f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
-            return True
-        else:
-            logging.error("标记账号已使用状态失败")
-            logging.info(
-                f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
-            return False
-
+        change_result = change_account_info(account["email"])
+        # 即使标记失败也继续，因为账号已经更新成功
+        if not change_result:
+            logging.warning("标记账号已使用状态失败，但账号已更新成功")
+        logging.info("账号替换完成")
+        logging.info(
+            f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
+        return True
     else:
         logging.error("更新认证信息失败")
         logging.info(f"脚本为免费提供，请勿用于商业用途。也请通过付费渠道获得本脚本的用户及时退款，以免造成不必要的损失。")
@@ -692,7 +705,7 @@ def refresh_data():
     # 获取可用账号
     accounts = get_available_accounts()
     if not accounts:
-        logging.error("没有可用的账号")
+        logging.warning("没有可用的账号，API可能未配置或无可用账号")
         return
 
     logging.info(f"获取到 {len(accounts)} 个可用账号")

@@ -209,7 +209,11 @@ def save_account_to_api(email, password, credits=50):
     Returns:
         bool: 是否保存成功
     """
-    api_url = "https://accounts.zxai.fun/api/accounts"
+    config = Config()
+    api_url = config.get_api_accounts_url()
+    if not api_url:
+        logging.warning("无法获取账号API URL，跳过保存账号到API")
+        return False
     payload = {
         "accounts": [
             {
@@ -545,7 +549,7 @@ def check_version():
 
 
 def restart_cursor(cursor_path):
-    print("现在可以重新启动 Cursor 了，为避免Cursor程序的运行权限问题，不再支持脚本重启，请手动启动Cursor")
+    print("\n现在可以重新启动 Cursor 了，为避免Cursor程序的运行权限问题，不再支持脚本重启，请手动启动Cursor")
     
     # if cursor_path:
     #     print("现在可以重新启动 Cursor 了。")

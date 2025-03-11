@@ -44,6 +44,7 @@ class Config:
         self.imap = False
         self.temp_mail = "sonder"  # 默认设置为 sonder
         self.domain = random.choice(self._domains)
+        # 不设置默认API URL，必须从环境变量中读取
 
         # 检查是否支持颜色输出
         def supports_color():
@@ -103,6 +104,12 @@ class Config:
                 self.imap_user = os.getenv("IMAP_USER", "").strip()
                 self.imap_pass = os.getenv("IMAP_PASS", "").strip()
                 self.imap_dir = os.getenv("IMAP_DIR", "inbox").strip()
+
+            # 读取API相关URL
+            self.api_base_url = os.getenv("API_BASE_URL")
+            self.api_accounts_url = os.getenv("API_ACCOUNTS_URL")
+            self.api_available_accounts_url = os.getenv("API_AVAILABLE_ACCOUNTS_URL")
+            self.api_mark_used_url_prefix = os.getenv("API_MARK_USED_URL_PREFIX")
         else:
             self.print_config()
 
@@ -143,6 +150,34 @@ class Config:
                 return env_domain.strip()
         return random.choice(self._domains)
 
+    def get_api_base_url(self):
+        """获取API基础URL"""
+        if not self.api_base_url:
+            logging.warning("API_BASE_URL未配置，API相关功能将不可用")
+            return None
+        return self.api_base_url
+
+    def get_api_accounts_url(self):
+        """获取账号API URL"""
+        if not self.api_accounts_url:
+            logging.warning("API_ACCOUNTS_URL未配置，账号API相关功能将不可用")
+            return None
+        return self.api_accounts_url
+
+    def get_api_available_accounts_url(self):
+        """获取可用账号API URL"""
+        if not self.api_available_accounts_url:
+            logging.warning("API_AVAILABLE_ACCOUNTS_URL未配置，获取可用账号功能将不可用")
+            return None
+        return self.api_available_accounts_url
+
+    def get_api_mark_used_url(self, email):
+        """获取标记账号已使用的API URL"""
+        if not self.api_mark_used_url_prefix:
+            logging.warning("API_MARK_USED_URL_PREFIX未配置，标记账号已使用功能将不可用")
+            return None
+        return f"{self.api_mark_used_url_prefix}/{email}/mark-used"
+
     def check_config(self):
         """检查配置项是否有效
 
@@ -151,52 +186,84 @@ class Config:
         2. 如果使用 IMAP，需要配置 IMAP_SERVER、IMAP_PORT、IMAP_USER、IMAP_PASS
         3. IMAP_DIR 是可选的
         4. DOMAIN 可以是单个域名或域名数组
+        5. API相关URL为可选配置
+        
+        Returns:
+            bool: 配置是否有效
         """
-        # 检查域名配置
-        env_domain = os.getenv("DOMAIN")
-        if env_domain:
-            try:
-                domains = eval(env_domain)
-                if isinstance(domains, list):
-                    if not domains:
-                        raise ValueError("域名数组不能为空，请在 .env 文件中正确设置 DOMAIN")
-                    for domain in domains:
-                        if not self.check_is_valid(domain):
-                            raise ValueError(f"域名数组中存在无效域名: {domain}")
-                elif not self.check_is_valid(env_domain):
-                    raise ValueError("域名配置无效，请在 .env 文件中正确设置 DOMAIN")
-            except:
-                if not self.check_is_valid(env_domain):
-                    raise ValueError("域名配置无效，请在 .env 文件中正确设置 DOMAIN")
-        elif not self.check_is_valid(self.domain):
-            raise ValueError("域名未配置，请在 .env 文件中设置 DOMAIN")
+        try:
+            # 检查域名配置
+            env_domain = os.getenv("DOMAIN")
+            if env_domain:
+                try:
+                    domains = eval(env_domain)
+                    if isinstance(domains, list):
+                        if not domains:
+                            logging.error("域名数组不能为空，请在 .env 文件中正确设置 DOMAIN")
+                            return False
+                        for domain in domains:
+                            if not self.check_is_valid(domain):
+                                logging.error(f"域名数组中存在无效域名: {domain}")
+                                return False
+                    elif not self.check_is_valid(env_domain):
+                        logging.error("域名配置无效，请在 .env 文件中正确设置 DOMAIN")
+                        return False
+                except:
+                    if not self.check_is_valid(env_domain):
+                        logging.error("域名配置无效，请在 .env 文件中正确设置 DOMAIN")
+                        return False
+            elif not self.check_is_valid(self.domain):
+                logging.error("域名未配置，请在 .env 文件中设置 DOMAIN")
+                return False
 
-        # 检查邮箱配置
-        if self.temp_mail != "null":
-            # tempmail.plus 模式
-            if not self.check_is_valid(self.temp_mail):
-                raise ValueError("临时邮箱未配置，请在 .env 文件中设置 TEMP_MAIL")
-        else:
-            # IMAP 模式
-            imap_configs = {
-                "imap_server": "IMAP服务器",
-                "imap_port": "IMAP端口",
-                "imap_user": "IMAP用户名",
-                "imap_pass": "IMAP密码",
-            }
+            # 检查邮箱配置
+            if self.temp_mail != "null":
+                # tempmail.plus 模式
+                if not self.check_is_valid(self.temp_mail):
+                    logging.error("临时邮箱未配置，请在 .env 文件中设置 TEMP_MAIL")
+                    return False
+            else:
+                # IMAP 模式
+                imap_configs = {
+                    "imap_server": "IMAP服务器",
+                    "imap_port": "IMAP端口",
+                    "imap_user": "IMAP用户名",
+                    "imap_pass": "IMAP密码",
+                }
 
-            for key, name in imap_configs.items():
-                value = getattr(self, key)
-                if value == "null" or not self.check_is_valid(value):
-                    raise ValueError(
-                        f"{name}未配置，请在 .env 文件中设置 {key.upper()}"
-                    )
+                for key, name in imap_configs.items():
+                    value = getattr(self, key)
+                    if value == "null" or not self.check_is_valid(value):
+                        logging.error(f"{name}未配置，请在 .env 文件中设置 {key.upper()}")
+                        return False
 
-            # IMAP_DIR 是可选的，如果设置了就检查其有效性
-            if self.imap_dir != "null" and not self.check_is_valid(self.imap_dir):
-                raise ValueError(
-                    "IMAP收件箱目录配置无效，请在 .env 文件中正确设置 IMAP_DIR"
-                )
+                # IMAP_DIR 是可选的，如果设置了就检查其有效性
+                if self.imap_dir != "null" and not self.check_is_valid(self.imap_dir):
+                    logging.error("IMAP收件箱目录配置无效，请在 .env 文件中正确设置 IMAP_DIR")
+                    return False
+            
+            # 检查邮箱API配置
+            if not self.check_is_valid(os.getenv("EMAIL_BASE_URL")):
+                logging.error("EMAIL_BASE_URL未配置或无效")
+                return False
+            if not self.check_is_valid(os.getenv("EMAIL_API_KEY")):
+                logging.error("EMAIL_API_KEY未配置或无效")
+                return False
+            
+            # 检查API相关配置 - 这些是可选的
+            if os.getenv("API_BASE_URL") and not self.check_is_valid(os.getenv("API_BASE_URL")):
+                logging.warning("API_BASE_URL配置无效")
+            if os.getenv("API_ACCOUNTS_URL") and not self.check_is_valid(os.getenv("API_ACCOUNTS_URL")):
+                logging.warning("API_ACCOUNTS_URL配置无效")
+            if os.getenv("API_AVAILABLE_ACCOUNTS_URL") and not self.check_is_valid(os.getenv("API_AVAILABLE_ACCOUNTS_URL")):
+                logging.warning("API_AVAILABLE_ACCOUNTS_URL配置无效")
+            if os.getenv("API_MARK_USED_URL_PREFIX") and not self.check_is_valid(os.getenv("API_MARK_USED_URL_PREFIX")):
+                logging.warning("API_MARK_USED_URL_PREFIX配置无效")
+
+            return True
+        except Exception as e:
+            logging.error(f"配置检查出错: {str(e)}")
+            return False
 
     def check_is_valid(self, value):
         """检查配置项是否有效
@@ -214,16 +281,13 @@ class Config:
         def supports_color():
             if os.name == 'nt':
                 try:
-                    # Windows 10 build 14931 或更高版本支持 ANSI
                     import ctypes
                     kernel32 = ctypes.windll.kernel32
-                    # 获取控制台输出句柄
-                    handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+                    handle = kernel32.GetStdHandle(-11)
                     mode = ctypes.c_ulong()
                     if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
                         return False
-                    # 启用 ANSI 转义序列
-                    mode.value |= 0x0004  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                    mode.value |= 0x0004
                     if not kernel32.SetConsoleMode(handle, mode):
                         return False
                     return True
@@ -233,27 +297,27 @@ class Config:
 
         # 根据是否支持颜色选择输出格式
         if supports_color():
-            green = "\033[32m"
-            reset = "\033[0m"
             yellow = "\033[33m"
+            reset = "\033[0m"
         else:
-            green = ""
-            reset = ""
             yellow = ""
+            reset = ""
 
-        if not os.path.exists(".env"):
-            logging.info(f"{yellow}未找到.env文件，使用默认配置{reset}")
-
-        if self.imap:
-            logging.info(f"{green}IMAP服务器: {self.imap_server}{reset}")
-            logging.info(f"{green}IMAP端口: {self.imap_port}{reset}")
-            logging.info(f"{green}IMAP用户名: {self.imap_user}{reset}")
-            logging.info(f"{green}IMAP密码: {'*' * len(self.imap_pass)}{reset}")
-            logging.info(f"{green}IMAP收件箱目录: {self.imap_dir}{reset}")
-        # if self.temp_mail != "null":
-        # 移除默认信息的打印
-        # logging.info(f"{green}临时邮箱: {self.temp_mail}@{self.domain}{reset}")
-        # logging.info(f"{green}域名: {self.domain}{reset}")
+        print(f"\n{yellow}当前配置信息:{reset}")
+        print(f"域名: {self.domain}")
+        print(f"邮箱API地址: {os.getenv('EMAIL_BASE_URL', '未配置')}")
+        print(f"邮箱API密钥: {os.getenv('EMAIL_API_KEY', '未配置')}")
+        
+        # 打印API相关配置
+        print(f"API基础URL: {os.getenv('API_BASE_URL', '未配置')}")
+        print(f"账号API URL: {os.getenv('API_ACCOUNTS_URL', '未配置')}")
+        print(f"可用账号API URL: {os.getenv('API_AVAILABLE_ACCOUNTS_URL', '未配置')}")
+        print(f"标记账号已使用API URL前缀: {os.getenv('API_MARK_USED_URL_PREFIX', '未配置')}")
+        
+        print(f"代理: {os.getenv('BROWSER_PROXY', '未配置')}")
+        print(f"无头模式: {os.getenv('BROWSER_HEADLESS', '未配置')}")
+        print(f"User-Agent: {os.getenv('BROWSER_USER_AGENT', '未配置')}")
+        print()
 
 
 # 使用示例
