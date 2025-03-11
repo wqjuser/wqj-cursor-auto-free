@@ -951,6 +951,7 @@ async def main():
 
                 if is_success:
                     restart_cursor(cursor_path)
+                    sys.exit(0)
                 else:
                     print("\n登录失败，按回车键退出...", end='', flush=True)
                     input()
@@ -976,6 +977,7 @@ async def main():
             time.sleep(2)
             # 重启Cursor并退出
             restart_cursor(cursor_path)
+            sys.exit(0)
         else:
             print("Cursor 未能自动关闭，请手动关闭后重试")
             sys.exit(0)
@@ -1102,15 +1104,15 @@ if __name__ == "__main__":
             os.makedirs(log_dir)
 
         # 创建一个文件处理器，将日志写入文件
-        log_file = os.path.join(log_dir, f"cursor_pro_{int(time.time())}.log")
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
-        file_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
-        file_handler.setFormatter(formatter)
-        logging.getLogger().addHandler(file_handler)
+        # log_file = os.path.join(log_dir, f"cursor_pro_{int(time.time())}.log")
+        # file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        # file_handler.setLevel(logging.DEBUG)
+        # formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+        # file_handler.setFormatter(formatter)
+        # logging.getLogger().addHandler(file_handler)
 
         # 记录启动信息
-        logging.info("程序启动")
+        # logging.info("程序启动")
 
         # 运行主程序
         asyncio.run(main())
