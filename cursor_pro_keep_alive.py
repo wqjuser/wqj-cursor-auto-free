@@ -500,10 +500,7 @@ def show_menu():
 def check_version():
     # 检查版本号
     try:
-        headers = {
-            'Authorization': 'Bearer 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'
-        }
-        response = requests.get('https://api.github.com/repos/wqjuser/wqj-cursor-auto-free/tags', headers=headers)
+        response = requests.get('https://api.github.com/repos/wqjuser/wqj-cursor-auto-free/tags')
         if response.status_code == 200:
             tags = response.json()
             if tags:
