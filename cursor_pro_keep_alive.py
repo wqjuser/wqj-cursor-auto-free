@@ -669,7 +669,7 @@ exit
 
 def try_register(is_auto_register=False):
     global browser_manager, email_handler, sign_up_url, settings_url, account, password, first_name, last_name, email_box_id, new_email_handler
-    logging.info("\n开始注册账号")
+    logging.info("开始注册账号")
 
     logging.info("正在初始化浏览器...")
     # 获取user_agent
@@ -686,7 +686,7 @@ def try_register(is_auto_register=False):
     logging.info("正在初始化邮箱验证模块...")
     # email_handler = EmailVerificationHandler(pin=pin)
     new_email_handler = EmailHandler()
-    logging.info("\n=== 配置信息 ===")
+    logging.info("=== 配置信息 ===")
     login_url = "https://authenticator.cursor.sh"
     sign_up_url = "https://authenticator.cursor.sh/sign-up"
     settings_url = "https://www.cursor.com/settings"
@@ -1069,7 +1069,7 @@ async def main():
     browser_manager = None
     is_success = False
     try:
-        logging.info("\n=== 初始化程序 ===")
+        logging.info("=== 初始化程序 ===")
         success, cursor_path = ExitCursor()
         logging.info("处理Cursor...")
         await reset_machine_id()

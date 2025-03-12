@@ -50,6 +50,11 @@ def print_logo():
     print("\033[93m" + "Building Cursor Keep Alive...".center(56) + "\033[0m\n")
 
 
+def print_gui_logo():
+    print("\033[96m" + CURSOR_LOGO + "\033[0m")
+    print("\033[93m" + "Building Cursor Pro GUI...".center(56) + "\033[0m\n")
+
+
 def progress_bar(progress, total, prefix="", length=50):
     filled = int(length * progress // total)
     bar = "█" * filled + "░" * (length - filled)
@@ -81,26 +86,12 @@ def filter_output(output):
     return "\n".join(important_lines)
 
 
-def build(minimal=True):  # 默认为最简化版本
-    # Clear screen
-    os.system("cls" if platform.system().lower() == "windows" else "clear")
-
-    # Print logo
-    print_logo()
-
-    system = platform.system().lower()
-    spec_file = os.path.join("CursorKeepAlive.spec")
-    output_dir = f"dist/{system if system != 'darwin' else 'mac'}"
-
-    # Create output directory
-    os.makedirs(output_dir, exist_ok=True)
-    simulate_progress("Creating output directory...", 0.5)
-
-    # 确保清单文件存在
-    if system == "windows" and not os.path.exists("app.manifest"):
-        print("\033[93mWarning: app.manifest file not found, creating default manifest...\033[0m")
-        with open("app.manifest", "w", encoding="utf-8") as f:
-            f.write('''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+def create_manifest_file():
+    """创建请求管理员权限的manifest文件"""
+    print(f"\033[93mCreating app.manifest...\033[0m")
+    
+    with open("app.manifest", "w", encoding="utf-8") as f:
+        f.write('''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity type="win32" name="CursorPro" version="1.0.0.0" processorArchitecture="*"/>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
@@ -125,9 +116,103 @@ def build(minimal=True):  # 默认为最简化版本
     </application>
   </compatibility>
 </assembly>''')
-        simulate_progress("Created manifest file...", 0.5)
+    
+    simulate_progress("Created app.manifest...", 0.5)
+    return "app.manifest"
 
-    # 使用 spec 文件构建
+
+def create_spec_file(is_gui=False):
+    """创建PyInstaller规范文件"""
+    file_name = "CursorProGUI.spec" if is_gui else "CursorKeepAlive.spec"
+    entry_point = "cursor_gui.py" if is_gui else "cursor_pro_keep_alive.py"
+    app_name = "CursorProGUI" if is_gui else "CursorPro"
+    
+    print(f"\033[93mCreating {file_name}...\033[0m")
+    
+    with open(file_name, "w", encoding="utf-8") as f:
+        f.write(f'''# -*- mode: python ; coding: utf-8 -*-
+
+import sys
+from PyInstaller.utils.win32 import winmanifest
+
+block_cipher = None
+
+# 确保使用正确的manifest文件
+manifest_path = 'app.manifest'
+
+a = Analysis(
+    ['{entry_point}'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('.env', '.'),
+        ('app.manifest', '.'),
+        ('logs', 'logs'),
+        ('turnstilePatch', 'turnstilePatch'),
+        ('cursor_auth_manager.py', '.'),
+        ('patch_cursor_get_machine_id.py', '.')
+    ],
+    hiddenimports=[
+        'PyQt5.QtCore',
+        'PyQt5.QtGui',
+        'PyQt5.QtWidgets',
+        'requests',
+        'logging',
+        'json',
+        'random',
+        'time',
+        'os',
+        'sys',
+        'platform',
+        'ctypes',
+        'subprocess',
+        'threading',
+        'dotenv',
+    ],
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='{app_name}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console={'False' if is_gui else 'True'},
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='icon.ico' if os.path.exists('icon.ico') else None,
+    manifest=manifest_path,
+    uac_admin=True,  # 显式请求管理员权限
+)
+''')
+    
+    simulate_progress(f"Created {file_name}...", 0.5)
+    return file_name
+
+
+def run_pyinstaller(spec_file, output_dir, system):
+    """运行PyInstaller打包应用程序"""
     pyinstaller_command = [
         "pyinstaller",
         spec_file,
@@ -157,7 +242,7 @@ def build(minimal=True):  # 默认为最简化版本
             if stderr:
                 print("\033[91mError Details:\033[0m")
                 print(stderr)
-            return
+            return False
 
         if stderr:
             filtered_errors = [
@@ -169,29 +254,83 @@ def build(minimal=True):  # 默认为最简化版本
                 print("\033[93mBuild Warnings/Errors:\033[0m")
                 print("\n".join(filtered_errors))
 
+        return True
     except Exception as e:
         loading.stop()
         print(f"\033[91mBuild failed: {str(e)}\033[0m")
-        return
+        return False
     finally:
         loading.stop()
 
+
+def check_build_result(output_dir, system, is_gui=False):
+    """检查构建结果"""
+    app_name = "CursorProGUI" if is_gui else "CursorPro"
+    
     # 根据操作系统检查不同的输出文件
     if system == "darwin":  # macOS
-        app_path = os.path.join(output_dir, "CursorPro.app")
+        app_path = os.path.join(output_dir, f"{app_name}.app")
         if os.path.exists(app_path) and os.path.isdir(app_path):
             print(f"\n\033[92mBuild completed successfully!\033[0m")
-            print(f"\033[92mCursorPro.app has been created at: {app_path}\033[0m")
+            print(f"\033[92m{app_name}.app has been created at: {app_path}\033[0m")
+            return True
         else:
-            print(f"\n\033[91mBuild failed: CursorPro.app was not created\033[0m")
+            print(f"\n\033[91mBuild failed: {app_name}.app was not created\033[0m")
+            return False
     else:  # Windows 或 Linux
-        exe_path = os.path.join(output_dir, "CursorPro.exe" if system == "windows" else "CursorPro")
+        exe_path = os.path.join(output_dir, f"{app_name}.exe" if system == "windows" else app_name)
         if os.path.exists(exe_path):
             print(f"\n\033[92mBuild completed successfully!\033[0m")
             print(f"\033[92m{os.path.basename(exe_path)} has been created at: {exe_path}\033[0m")
+            return True
         else:
             print(f"\n\033[91mBuild failed: {os.path.basename(exe_path)} was not created\033[0m")
+            return False
+
+
+def build(minimal=True, is_gui=False):
+    """构建应用程序"""
+    # Clear screen
+    os.system("cls" if platform.system().lower() == "windows" else "clear")
+
+    # Print logo
+    if is_gui:
+        print_gui_logo()
+    else:
+        print_logo()
+
+    system = platform.system().lower()
+    output_dir = f"dist/{system if system != 'darwin' else 'mac'}"
+
+    # Create output directory
+    os.makedirs(output_dir, exist_ok=True)
+    simulate_progress("Creating output directory...", 0.5)
+
+    # 创建清单文件
+    create_manifest_file()
+    
+    # 创建spec文件
+    spec_file = create_spec_file(is_gui)
+    
+    # 运行PyInstaller
+    if run_pyinstaller(spec_file, output_dir, system):
+        # 检查构建结果
+        return check_build_result(output_dir, system, is_gui)
+    
+    return False
+
+
+def build_gui():
+    """构建GUI应用程序"""
+    return build(minimal=False, is_gui=True)
 
 
 if __name__ == "__main__":
-    build()  # 直接调用build函数，不需要任何参数
+    parser = argparse.ArgumentParser(description="Build Cursor Pro applications")
+    parser.add_argument("--gui", action="store_true", help="Build GUI application")
+    args = parser.parse_args()
+    
+    if args.gui:
+        build_gui()
+    else:
+        build()  # 默认构建命令行版本

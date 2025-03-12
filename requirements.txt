@@ -1,6 +1,9 @@
 DrissionPage
 colorama
 python-dotenv
-psutil
-requests
+psutil>=5.9.0
+requests>=2.31.0
 aiofiles
+PyQt6>=6.4.0
+PyQt6-Qt6>=6.4.0
+PyQt6-sip>=13.4.0
