@@ -242,14 +242,11 @@ class Config:
                     logging.error("IMAP收件箱目录配置无效，请在 .env 文件中正确设置 IMAP_DIR")
                     return False
             
-            # 检查邮箱API配置
-            if not self.check_is_valid(os.getenv("EMAIL_BASE_URL")):
-                logging.error("EMAIL_BASE_URL未配置或无效")
-                return False
-            if not self.check_is_valid(os.getenv("EMAIL_API_KEY")):
-                logging.error("EMAIL_API_KEY未配置或无效")
-                return False
-            
+            # 检查邮箱API配置 - 这些是可选的
+            if os.getenv("EMAIL_BASE_URL") and not self.check_is_valid(os.getenv("EMAIL_BASE_URL")):
+                logging.warning("EMAIL_BASE_URL未配置或无效")
+            if os.getenv("EMAIL_API_KEY") and not self.check_is_valid(os.getenv("EMAIL_API_KEY")):
+                logging.warning("EMAIL_API_KEY未配置或无效")
             # 检查API相关配置 - 这些是可选的
             if os.getenv("API_BASE_URL") and not self.check_is_valid(os.getenv("API_BASE_URL")):
                 logging.warning("API_BASE_URL配置无效")
@@ -302,23 +299,6 @@ class Config:
         else:
             yellow = ""
             reset = ""
-
-        print(f"\n{yellow}当前配置信息:{reset}")
-        print(f"域名: {self.domain}")
-        print(f"邮箱API地址: {os.getenv('EMAIL_BASE_URL', '未配置')}")
-        print(f"邮箱API密钥: {os.getenv('EMAIL_API_KEY', '未配置')}")
-        
-        # 打印API相关配置
-        print(f"API基础URL: {os.getenv('API_BASE_URL', '未配置')}")
-        print(f"账号API URL: {os.getenv('API_ACCOUNTS_URL', '未配置')}")
-        print(f"可用账号API URL: {os.getenv('API_AVAILABLE_ACCOUNTS_URL', '未配置')}")
-        print(f"标记账号已使用API URL前缀: {os.getenv('API_MARK_USED_URL_PREFIX', '未配置')}")
-        
-        print(f"代理: {os.getenv('BROWSER_PROXY', '未配置')}")
-        print(f"无头模式: {os.getenv('BROWSER_HEADLESS', '未配置')}")
-        print(f"User-Agent: {os.getenv('BROWSER_USER_AGENT', '未配置')}")
-        print()
-
 
 # 使用示例
 if __name__ == "__main__":
