@@ -595,6 +595,13 @@ class CursorProGUI(QMainWindow):
         
         # 设置标题中包含版本号
         self.setWindowTitle(f"Cursor Pro - {self.version}")
+        
+        # 设置窗口标志，确保在macOS上正确显示
+        if self.is_macos:
+            self.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, True)
+            self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+            self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
+            self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, True)
             
         self.init_ui()
         
