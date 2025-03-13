@@ -147,9 +147,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('.env', '.'),
         ('app.manifest', '.'),
-        ('logs', 'logs'),
         ('turnstilePatch', 'turnstilePatch'),
         ('cursor_auth_manager.py', '.'),
         ('patch_cursor_get_machine_id.py', '.'),
