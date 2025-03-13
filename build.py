@@ -131,6 +131,35 @@ def create_spec_file(is_gui=False):
     
     print(f"\033[93mCreating {file_name}...\033[0m")
     
+    # 准备hiddenimports列表
+    common_imports = [
+        'requests',
+        'logging',
+        'json',
+        'random',
+        'time',
+        'os',
+        'sys',
+        'platform',
+        'ctypes',
+        'subprocess',
+        'threading',
+        'dotenv',
+        'cursor_pro_keep_alive',
+        'cursor_auth_manager',
+        'patch_cursor_get_machine_id',
+        'refresh_data',
+        'exit_cursor',
+        'launcher'
+    ]
+    
+    # 只在GUI版本中添加PyQt6和cursor_gui
+    if is_gui:
+        common_imports = ['PyQt6', 'cursor_gui'] + common_imports
+    
+    # 将列表转换为格式化的字符串
+    hidden_imports = ',\n        '.join(f"'{item}'" for item in common_imports)
+    
     spec_content = f"""# -*- mode: python ; coding: utf-8 -*-
 
 import sys
@@ -158,26 +187,7 @@ a = Analysis(
         ('cursor_pro_keep_alive.py', '.')
     ],
     hiddenimports=[
-        'PyQt6',
-        'requests',
-        'logging',
-        'json',
-        'random',
-        'time',
-        'os',
-        'sys',
-        'platform',
-        'ctypes',
-        'subprocess',
-        'threading',
-        'dotenv',
-        'cursor_gui',
-        'cursor_pro_keep_alive',
-        'cursor_auth_manager',
-        'patch_cursor_get_machine_id',
-        'refresh_data',
-        'exit_cursor',
-        'launcher'
+        {hidden_imports}
     ],
     hookspath=[],
     hooksconfig={{}},

@@ -10,7 +10,7 @@ block_cipher = None
 manifest_path = 'app.manifest'
 
 a = Analysis(
-    ['cursor_pro_keep_alive.py'],
+    ['cursor_gui.py'],
     pathex=[],
     binaries=[],
     datas=[
@@ -25,6 +25,8 @@ a = Analysis(
         ('cursor_pro_keep_alive.py', '.')
     ],
     hiddenimports=[
+        'PyQt6',
+        'cursor_gui',
         'requests',
         'logging',
         'json',
@@ -62,7 +64,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
         a.scripts,
         [],
         exclude_binaries=True,
-        name='CursorPro',
+        name='CursorProGUI',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
@@ -79,24 +81,24 @@ if sys.platform == 'darwin':  # macOS specific configuration
         strip=False,
         upx=True,
         upx_exclude=[],
-        name='CursorPro'
+        name='CursorProGUI'
     )
     
     app = BUNDLE(
         coll,
-        name='CursorPro.app',
+        name='CursorProGUI.app',
         icon='icon.icns' if os.path.exists('icon.icns') else None,
         bundle_identifier='com.cursor.pro.gui',
         info_plist={
             'NSHighResolutionCapable': 'True',
             'LSBackgroundOnly': 'False',
-            'CFBundleName': 'CursorPro',
+            'CFBundleName': 'CursorProGUI',
             'CFBundleDisplayName': 'Cursor Pro GUI',
             'CFBundleGetInfoString': 'Cursor Pro GUI Application',
             'CFBundleVersion': '1.0.0',
             'CFBundleShortVersionString': '1.0.0',
             'CFBundleIdentifier': 'com.cursor.pro.gui',
-            'CFBundleExecutable': 'CursorPro',
+            'CFBundleExecutable': 'CursorProGUI',
             'CFBundlePackageType': 'APPL',
             'CFBundleSignature': '????',
             'LSMinimumSystemVersion': '10.13.0',
@@ -135,14 +137,14 @@ else:  # Windows and Linux configuration
         a.zipfiles,
         a.datas,
         [],
-        name='CursorPro',
+        name='CursorProGUI',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
         upx=True,
         upx_exclude=[],
         runtime_tmpdir=None,
-        console=True,
+        console=False,
         disable_windowed_traceback=False,
         argv_emulation=False,
         target_arch=None,
