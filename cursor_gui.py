@@ -171,7 +171,15 @@ class WorkerThread(QThread):
                 
             elif self.task_type == "replace_account":
                 self.update_signal.emit("开始替换账号...", "info")
-                refresh_data.replace_account()
+                # 检查是否是macOS并且需要管理员权限
+                is_macos_admin = self.params.get("macos_admin", False)
+                if is_macos_admin:
+                    self.update_signal.emit("使用管理员权限在macOS上替换账号...", "info")
+                    # 针对macOS的特殊处理
+                    self.handle_macos_replace_account()
+                else:
+                    # 使用普通方式
+                    refresh_data.replace_account()
                 self.update_signal.emit("账号替换完成", "info")
                 self.finished_signal.emit(True)
                 
@@ -180,6 +188,80 @@ class WorkerThread(QThread):
             error_msg = f"执行任务时出错: {str(e)}\n{traceback.format_exc()}"
             self.update_signal.emit(error_msg, "error")
             self.finished_signal.emit(False)
+            
+    def handle_macos_replace_account(self):
+        """使用管理员权限在macOS上处理替换账号操作"""
+        import platform
+        import os
+        import json
+        
+        # 确认是macOS系统
+        if platform.system() != "Darwin":
+            self.update_signal.emit("不是macOS系统，使用普通替换方式", "warning")
+            refresh_data.replace_account()
+            return
+            
+        # 获取account.json路径
+        account_path = os.path.expanduser("~/Library/Application Support/Cursor/User/globalStorage/account.json")
+        self.update_signal.emit(f"macOS account.json路径: {account_path}", "info")
+        
+        # 获取可用账号
+        accounts = refresh_data.get_available_accounts()
+        if not accounts:
+            self.update_signal.emit("没有可用的账号，API可能未配置或无可用账号", "warning")
+            return
+            
+        self.update_signal.emit(f"获取到 {len(accounts)} 个可用账号", "info")
+        
+        # 随机选择一个账号
+        import random
+        account = random.choice(accounts)
+        self.update_signal.emit(f"随机选择账号: {account['email']}", "info")
+        
+        # 构建account.json内容
+        account_data = {
+            "email": account["email"],
+            "token": account["refresh_token"],
+            "user_id": account["user_id"]
+        }
+        
+        try:
+            # 写入临时文件
+            temp_path = "/tmp/cursor_account.json"
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(account_data, f, indent=2)
+                
+            self.update_signal.emit("已创建临时文件", "info")
+            
+            # 使用管理员权限复制文件
+            import subprocess
+            cmd = ['osascript', '-e', 
+                   f'do shell script "cp \\"{temp_path}\\" \\"{account_path}\\"" with administrator privileges']
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                self.update_signal.emit("成功使用管理员权限替换account.json文件", "info")
+                
+                # 设置文件权限
+                chmod_cmd = ['osascript', '-e', 
+                             f'do shell script "chmod 666 \\"{account_path}\\"" with administrator privileges']
+                chmod_result = subprocess.run(chmod_cmd, capture_output=True, text=True)
+                
+                if chmod_result.returncode == 0:
+                    self.update_signal.emit("成功设置account.json文件权限", "info")
+                else:
+                    self.update_signal.emit(f"设置权限失败: {chmod_result.stderr}", "warning")
+                
+                # 标记账号为已使用
+                refresh_data.change_account_info(account["email"])
+            else:
+                self.update_signal.emit(f"复制文件失败: {result.stderr}", "error")
+                return
+                
+        except Exception as e:
+            import traceback
+            self.update_signal.emit(f"处理account.json文件时出错: {str(e)}\n{traceback.format_exc()}", "error")
+            return
 
 # 配置对话框类
 class ConfigDialog(QDialog):
@@ -1115,6 +1197,50 @@ class CursorProGUI(QMainWindow):
         # 处理任务前确保日志显示正常
         # self.log_handler.info(f"开始执行任务: {task_type}")
         QApplication.processEvents()
+        
+        # 为macOS上的replace_account任务特殊处理
+        if task_type == "replace_account" and self.is_macos:
+            self.log_handler.info("在macOS上执行替换账号操作，检查文件权限...")
+            
+            # 检查并创建必要的目录
+            account_json_path = os.path.expanduser("~/Library/Application Support/Cursor/User/globalStorage/account.json")
+            account_dir = os.path.dirname(account_json_path)
+            
+            if not os.path.exists(account_dir):
+                self.log_handler.info(f"目录不存在，尝试创建: {account_dir}")
+                try:
+                    # 使用管理员权限创建目录
+                    cmd = ['osascript', '-e', f'do shell script "mkdir -p \\"{account_dir}\\"" with administrator privileges']
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode == 0:
+                        self.log_handler.info(f"成功创建目录: {account_dir}")
+                    else:
+                        self.log_handler.error(f"创建目录失败: {result.stderr}")
+                        self.task_finished(False)
+                        return
+                except Exception as e:
+                    self.log_handler.error(f"创建目录时出错: {str(e)}")
+                    self.task_finished(False)
+                    return
+            
+            # 确保文件权限允许写入
+            if os.path.exists(account_json_path):
+                self.log_handler.info("检查account.json文件权限...")
+                try:
+                    # 使用管理员权限修改文件权限
+                    cmd = ['osascript', '-e', f'do shell script "chmod 666 \\"{account_json_path}\\"" with administrator privileges']
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode == 0:
+                        self.log_handler.info("成功修改文件权限")
+                    else:
+                        self.log_handler.error(f"修改文件权限失败: {result.stderr}")
+                except Exception as e:
+                    self.log_handler.error(f"修改文件权限时出错: {str(e)}")
+            
+            # 修改refresh_data.replace_account方法以使用额外参数
+            if not params:
+                params = {}
+            params["macos_admin"] = True
         
         # 创建并启动工作线程
         self.worker = WorkerThread(task_type, params)
