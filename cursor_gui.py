@@ -511,8 +511,9 @@ class ConfigDialog(QDialog):
         
         # 定义默认的配置项
         default_configs = [
-            "VERSION",
             "DOMAIN",
+            "EMAIL_BASE_URL",
+            "EMAIL_API_KEY",
             "API_ACCOUNTS_URL",
             "API_BASE_URL",
             "API_AVAILABLE_ACCOUNTS_URL",
