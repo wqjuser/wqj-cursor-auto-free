@@ -53,7 +53,7 @@ a = Analysis(
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=False,
+    noarchive=False
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -70,7 +70,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
         strip=False,
         upx=True,
         console=False,  # 设置为False以隐藏控制台窗口
-        target_arch='x86_64',
+        target_arch=None,
     )
     
     coll = COLLECT(
