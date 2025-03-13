@@ -166,7 +166,7 @@ def create_spec_file(is_gui=False):
     console_value = "False" if is_gui else "True"
     
     # 获取目标架构
-    target_arch = os.environ.get('MACOS_ARCH', None)
+    target_arch = os.environ.get('TARGET_ARCH', None)
     
     print(f"\033[93mCreating {file_name}...\033[0m")
     
@@ -238,7 +238,7 @@ a = Analysis(
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=False{target_arch_param}
+    noarchive=False
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -255,7 +255,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
         strip=False,
         upx=True,
         console=False,  # 设置为False以隐藏控制台窗口
-        target_arch=None{target_arch_param},
+        target_arch={target_arch},
     )
     
     coll = COLLECT(
@@ -332,7 +332,7 @@ else:  # Windows and Linux configuration
         console={console_value},
         disable_windowed_traceback=False,
         argv_emulation=False,
-        target_arch=None{target_arch_param},
+        target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
         icon='icon.ico' if os.path.exists('icon.ico') else None,
