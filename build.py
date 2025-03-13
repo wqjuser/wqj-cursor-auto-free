@@ -6,6 +6,8 @@ import time
 import threading
 import shutil
 import argparse
+import sys
+import locale
 
 # Ignore specific SyntaxWarning
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="DrissionPage")
@@ -18,6 +20,50 @@ CURSOR_LOGO = """
   ╚██████╗╚██████╔╝██║  ██║███████║╚██████╔╝██║  ██║
    ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝
 """
+
+def setup_console():
+    """设置控制台以支持ANSI颜色和Unicode字符"""
+    if platform.system() == 'Windows':
+        # 启用ANSI转义序列
+        os.system('')
+        # 设置控制台编码为UTF-8
+        if sys.version_info >= (3, 7):
+            sys.stdout.reconfigure(encoding='utf-8')
+        else:
+            # Python 3.6及以下版本
+            import codecs
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
+
+def safe_print_colored(text, color_code=""):
+    """安全打印带颜色的文本"""
+    try:
+        if platform.system() == 'Windows':
+            # Windows下尝试直接打印
+            print(f"{color_code}{text}\033[0m")
+        else:
+            # 其他系统正常打印
+            print(f"{color_code}{text}\033[0m")
+    except UnicodeEncodeError:
+        # 如果发生编码错误，尝试不带颜色打印
+        try:
+            print(text)
+        except UnicodeEncodeError:
+            # 如果还是失败，打印ASCII版本
+            print("CURSOR")
+
+def print_logo():
+    """打印CLI版本的logo"""
+    setup_console()
+    safe_print_colored(CURSOR_LOGO, "\033[96m")
+    safe_print_colored("Building Cursor Keep Alive...".center(56), "\033[93m")
+    print()
+
+def print_gui_logo():
+    """打印GUI版本的logo"""
+    setup_console()
+    safe_print_colored(CURSOR_LOGO, "\033[96m")
+    safe_print_colored("Building Cursor Pro GUI...".center(56), "\033[93m")
+    print()
 
 
 class LoadingAnimation:
@@ -43,16 +89,6 @@ class LoadingAnimation:
             print(f"\r{message} {animation[idx % len(animation)]}", end="", flush=True)
             idx += 1
             time.sleep(0.1)
-
-
-def print_logo():
-    print("\033[96m" + CURSOR_LOGO + "\033[0m")
-    print("\033[93m" + "Building Cursor Keep Alive...".center(56) + "\033[0m\n")
-
-
-def print_gui_logo():
-    print("\033[96m" + CURSOR_LOGO + "\033[0m")
-    print("\033[93m" + "Building Cursor Pro GUI...".center(56) + "\033[0m\n")
 
 
 def progress_bar(progress, total, prefix="", length=50):

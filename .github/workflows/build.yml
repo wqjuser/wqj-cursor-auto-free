@@ -68,7 +68,7 @@ jobs:
         path: dist/CursorProGUI.exe
 
   build-macos-arm64-cli:
-    runs-on: macos-latest
+    runs-on: macos-14  # 使用 macos-14 runner，它是 ARM 架构
     
     steps:
     - uses: actions/checkout@v2
@@ -85,8 +85,10 @@ jobs:
         pip install -r requirements.txt
         
     - name: Build MacOS ARM executable
+      env:
+        ARCHFLAGS: "-arch arm64"
       run: |
-        pyinstaller CursorKeepAlive.spec
+        python -m PyInstaller CursorKeepAlive.spec --target-arch arm64
         
     - name: Upload MacOS ARM artifact
       uses: actions/upload-artifact@v4
@@ -96,7 +98,7 @@ jobs:
 
   # 新增 - macOS ARM64 GUI版本
   build-macos-arm64-gui:
-    runs-on: macos-latest
+    runs-on: macos-14  # 使用 macos-14 runner，它是 ARM 架构
     
     steps:
     - uses: actions/checkout@v2
@@ -114,12 +116,16 @@ jobs:
         pip install PyQt6
         
     - name: Create GUI Spec
+      env:
+        ARCHFLAGS: "-arch arm64"
       run: |
         python build.py --gui
         
     - name: Build MacOS ARM GUI executable
+      env:
+        ARCHFLAGS: "-arch arm64"
       run: |
-        pyinstaller CursorProGUI.spec
+        python -m PyInstaller CursorProGUI.spec --target-arch arm64
         
     - name: Upload MacOS ARM GUI artifact
       uses: actions/upload-artifact@v4
@@ -199,18 +205,20 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
+        architecture: 'x64'
 
     - name: Install dependencies
       run: |
-        arch -x86_64 pip3 install --upgrade pip
-        arch -x86_64 pip3 install pyinstaller
-        arch -x86_64 pip3 install -r requirements.txt
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install --no-deps psutil
+        pip install -r requirements.txt
 
     - name: Build MacOS Intel executable
       env:
-        TARGET_ARCH: 'x86_64'
+        ARCHFLAGS: "-arch x86_64"
       run: |
-        arch -x86_64 python3 -m PyInstaller CursorKeepAlive.spec
+        python -m PyInstaller CursorKeepAlive.spec --target-arch x86_64
         
     - name: Upload MacOS Intel artifact
       uses: actions/upload-artifact@v4
@@ -229,23 +237,27 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
+        architecture: 'x64'
 
     - name: Install dependencies
       run: |
-        arch -x86_64 pip3 install --upgrade pip
-        arch -x86_64 pip3 install pyinstaller
-        arch -x86_64 pip3 install -r requirements.txt
-        arch -x86_64 pip3 install PyQt6
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install --no-deps psutil
+        pip install -r requirements.txt
+        pip install PyQt6
 
     - name: Create GUI Spec
+      env:
+        ARCHFLAGS: "-arch x86_64"
       run: |
-        arch -x86_64 python3 build.py --gui
+        python build.py --gui
         
     - name: Build MacOS Intel GUI executable
       env:
-        TARGET_ARCH: 'x86_64'
+        ARCHFLAGS: "-arch x86_64"
       run: |
-        arch -x86_64 python3 -m PyInstaller CursorProGUI.spec
+        python -m PyInstaller CursorProGUI.spec --target-arch x86_64
         
     - name: Upload MacOS Intel GUI artifact
       uses: actions/upload-artifact@v4
