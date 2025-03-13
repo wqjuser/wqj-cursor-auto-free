@@ -126,6 +126,8 @@ def create_spec_file(is_gui=False):
     file_name = "CursorProGUI.spec" if is_gui else "CursorKeepAlive.spec"
     entry_point = "cursor_gui.py" if is_gui else "cursor_pro_keep_alive.py"
     app_name = "CursorProGUI" if is_gui else "CursorPro"
+    # 直接计算console值，不带引号，这样在spec文件中会是实际的布尔值
+    console_value = "False" if is_gui else "True"
     
     print(f"\033[93mCreating {file_name}...\033[0m")
     
@@ -277,7 +279,7 @@ else:  # Windows and Linux configuration
         upx=True,
         upx_exclude=[],
         runtime_tmpdir=None,
-        console={{'False' if is_gui else 'True'}},
+        console={console_value},
         disable_windowed_traceback=False,
         argv_emulation=False,
         target_arch=None,

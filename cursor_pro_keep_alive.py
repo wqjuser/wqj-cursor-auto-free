@@ -403,7 +403,21 @@ def get_user_agent():
         return None
 
 
-def sign_in_account(tab, email, password=None):
+def get_verification_code_from_ui():
+    """从UI界面获取验证码
+    Returns:
+        str: 用户输入的验证码
+    """
+    try:
+        # 从GUI获取验证码
+        from cursor_gui import CursorProGUI
+        return CursorProGUI.get_verification_code()
+    except Exception as e:
+        logging.error(f"从UI获取验证码失败: {str(e)}")
+        return None
+
+
+def sign_in_account(tab, email, password=None, is_gui = False):
     """登录Cursor账号"""
     logging.info("=== 开始登录账号流程 ===")
     login_url = "https://authenticator.cursor.sh"
@@ -446,7 +460,15 @@ def sign_in_account(tab, email, password=None):
                 # 提示用户输入验证码
                 logging.info("\n请查看邮箱获取验证码")
                 handle_turnstile(tab)
-                verification_code = input("请输入验证码: ").strip()
+                
+                # 根据是否是GUI模式选择不同的验证码获取方式
+                if is_gui:
+                    verification_code = get_verification_code_from_ui()
+                    if not verification_code:
+                        logging.error("未能从UI获取验证码")
+                        return False
+                else:
+                    verification_code = input("请输入验证码: ").strip()
 
                 # 输入验证码
                 logging.info("正在输入验证码...")
