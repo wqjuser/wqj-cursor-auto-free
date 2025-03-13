@@ -32,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-CLI-Windows
-        path: dist/CursorPro.exe
+        path: dist/windows/CursorPro.exe
 
   # 新增 - Windows GUI版本
   build-windows-gui:
@@ -53,19 +53,15 @@ jobs:
         pip install -r requirements.txt
         pip install PyQt6
         
-    - name: Create GUI Spec
-      run: |
-        python build.py --gui
-        
     - name: Build GUI EXE
       run: |
-        pyinstaller CursorProGUI.spec
+        python build.py --gui
         
     - name: Upload Windows GUI artifact
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-GUI-Windows
-        path: dist/CursorProGUI.exe
+        path: dist/windows/CursorProGUI.exe
 
   build-macos-arm64-cli:
     runs-on: macos-14  # 使用 macos-14 runner，它是 ARM 架构
@@ -95,7 +91,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-CLI-MacOS-ARM64
-        path: dist/CursorPro
+        path: dist/mac/CursorPro
 
   # 新增 - macOS ARM64 GUI版本
   build-macos-arm64-gui:
@@ -127,7 +123,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-GUI-MacOS-ARM64
-        path: dist/CursorProGUI.app
+        path: dist/mac/CursorProGUI.app
 
   build-macos-intel-cli:
     runs-on: macos-latest
@@ -159,7 +155,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-CLI-MacOS-Intel
-        path: dist/CursorPro
+        path: dist/mac/CursorPro
 
   # 新增 - macOS Intel GUI版本
   build-macos-intel-gui:
@@ -193,7 +189,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-GUI-MacOS-Intel
-        path: dist/CursorProGUI.app
+        path: dist/mac/CursorProGUI.app
 
   build-linux-cli:
     runs-on: ubuntu-22.04
@@ -220,7 +216,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-CLI-Linux
-        path: dist/CursorPro
+        path: dist/linux/CursorPro
 
   # 新增 - Linux GUI版本
   build-linux-gui:
@@ -243,19 +239,15 @@ jobs:
         sudo apt-get install -y libgl1-mesa-glx libxkbcommon-x11-0
         pip install PyQt6
         
-    - name: Create GUI Spec
-      run: |
-        python build.py --gui
-        
     - name: Build Linux GUI executable
       run: |
-        pyinstaller CursorProGUI.spec
+        python build.py --gui
         
     - name: Upload Linux GUI artifact
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-GUI-Linux
-        path: dist/CursorProGUI
+        path: dist/linux/CursorProGUI
 
   create-release:
     needs: [
