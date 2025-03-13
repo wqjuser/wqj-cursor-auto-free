@@ -87,8 +87,9 @@ jobs:
     - name: Build MacOS ARM executable
       env:
         ARCHFLAGS: "-arch arm64"
+        MACOS_ARCH: "arm64"
       run: |
-        python -m PyInstaller CursorKeepAlive.spec --target-arch arm64
+        python -m PyInstaller CursorKeepAlive.spec
         
     - name: Upload MacOS ARM artifact
       uses: actions/upload-artifact@v4
@@ -115,22 +116,83 @@ jobs:
         pip install -r requirements.txt
         pip install PyQt6
         
-    - name: Create GUI Spec
-      env:
-        ARCHFLAGS: "-arch arm64"
-      run: |
-        python build.py --gui
-        
     - name: Build MacOS ARM GUI executable
       env:
         ARCHFLAGS: "-arch arm64"
+        MACOS_ARCH: "arm64"
       run: |
-        python -m PyInstaller CursorProGUI.spec --target-arch arm64
+        python build.py --gui
         
     - name: Upload MacOS ARM GUI artifact
       uses: actions/upload-artifact@v4
       with:
         name: CursorPro-GUI-MacOS-ARM64
+        path: dist/CursorProGUI.app
+
+  build-macos-intel-cli:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        architecture: 'x64'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install --no-deps psutil
+        pip install -r requirements.txt
+
+    - name: Build MacOS Intel executable
+      env:
+        ARCHFLAGS: "-arch x86_64"
+        MACOS_ARCH: "x86_64"
+      run: |
+        python -m PyInstaller CursorKeepAlive.spec
+        
+    - name: Upload MacOS Intel artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CursorPro-CLI-MacOS-Intel
+        path: dist/CursorPro
+
+  # 新增 - macOS Intel GUI版本
+  build-macos-intel-gui:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        architecture: 'x64'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install --no-deps psutil
+        pip install -r requirements.txt
+        pip install PyQt6
+
+    - name: Build MacOS Intel GUI executable
+      env:
+        ARCHFLAGS: "-arch x86_64"
+        MACOS_ARCH: "x86_64"
+      run: |
+        python build.py --gui
+        
+    - name: Upload MacOS Intel GUI artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CursorPro-GUI-MacOS-Intel
         path: dist/CursorProGUI.app
 
   build-linux-cli:
@@ -194,76 +256,6 @@ jobs:
       with:
         name: CursorPro-GUI-Linux
         path: dist/CursorProGUI
-
-  build-macos-intel-cli:
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-        architecture: 'x64'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller
-        pip install --no-deps psutil
-        pip install -r requirements.txt
-
-    - name: Build MacOS Intel executable
-      env:
-        ARCHFLAGS: "-arch x86_64"
-      run: |
-        python -m PyInstaller CursorKeepAlive.spec --target-arch x86_64
-        
-    - name: Upload MacOS Intel artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CursorPro-CLI-MacOS-Intel
-        path: dist/CursorPro
-
-  # 新增 - macOS Intel GUI版本
-  build-macos-intel-gui:
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-        architecture: 'x64'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller
-        pip install --no-deps psutil
-        pip install -r requirements.txt
-        pip install PyQt6
-
-    - name: Create GUI Spec
-      env:
-        ARCHFLAGS: "-arch x86_64"
-      run: |
-        python build.py --gui
-        
-    - name: Build MacOS Intel GUI executable
-      env:
-        ARCHFLAGS: "-arch x86_64"
-      run: |
-        python -m PyInstaller CursorProGUI.spec --target-arch x86_64
-        
-    - name: Upload MacOS Intel GUI artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CursorPro-GUI-MacOS-Intel
-        path: dist/CursorProGUI.app
 
   create-release:
     needs: [

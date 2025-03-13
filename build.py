@@ -165,6 +165,9 @@ def create_spec_file(is_gui=False):
     # 直接计算console值，不带引号，这样在spec文件中会是实际的布尔值
     console_value = "False" if is_gui else "True"
     
+    # 获取目标架构
+    target_arch = os.environ.get('MACOS_ARCH', None)
+    
     print(f"\033[93mCreating {file_name}...\033[0m")
     
     # 准备hiddenimports列表
@@ -195,6 +198,9 @@ def create_spec_file(is_gui=False):
     
     # 将列表转换为格式化的字符串
     hidden_imports = ',\n        '.join(f"'{item}'" for item in common_imports)
+    
+    # 准备target_arch参数
+    target_arch_param = f", target_arch='{target_arch}'" if target_arch else ""
     
     spec_content = f"""# -*- mode: python ; coding: utf-8 -*-
 
@@ -232,7 +238,7 @@ a = Analysis(
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=False,
+    noarchive=False{target_arch_param}
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -249,7 +255,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
         strip=False,
         upx=True,
         console=False,  # 设置为False以隐藏控制台窗口
-        target_arch='x86_64',
+        target_arch=None{target_arch_param},
     )
     
     coll = COLLECT(
@@ -326,7 +332,7 @@ else:  # Windows and Linux configuration
         console={console_value},
         disable_windowed_traceback=False,
         argv_emulation=False,
-        target_arch=None,
+        target_arch=None{target_arch_param},
         codesign_identity=None,
         entitlements_file=None,
         icon='icon.ico' if os.path.exists('icon.ico') else None,
