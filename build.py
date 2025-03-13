@@ -153,9 +153,9 @@ a = Analysis(
         ('patch_cursor_get_machine_id.py', '.')
     ],
     hiddenimports=[
-        'PyQt5.QtCore',
-        'PyQt5.QtGui',
-        'PyQt5.QtWidgets',
+        'PyQt6',
+        'PyQt6-Qt6',
+        'PyQt6-sip',
         'requests',
         'logging',
         'json',
