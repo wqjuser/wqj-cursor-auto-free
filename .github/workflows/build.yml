@@ -265,18 +265,34 @@ jobs:
         with:
           path: artifacts
           
+      - name: List downloaded files
+        run: |
+          ls -R artifacts/
+          
+      - name: Rename files
+        run: |
+          mv artifacts/CursorPro-CLI-Windows/CursorPro.exe artifacts/CursorPro-CLI-Windows/CursorPro-Windows.exe
+          mv artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro-MacOS-ARM64
+          mv artifacts/CursorPro-CLI-Linux/CursorPro artifacts/CursorPro-CLI-Linux/CursorPro-Linux
+          mv artifacts/CursorPro-CLI-MacOS-Intel/CursorPro artifacts/CursorPro-CLI-MacOS-Intel/CursorPro-MacOS-Intel
+          mv artifacts/CursorPro-GUI-Windows/CursorProGUI.exe artifacts/CursorPro-GUI-Windows/CursorProGUI-Windows.exe
+          mv artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI.app artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI-MacOS-ARM64.app
+          mv artifacts/CursorPro-GUI-Linux/CursorProGUI artifacts/CursorPro-GUI-Linux/CursorProGUI-Linux
+          mv artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI.app artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI-MacOS-Intel.app
+          
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/CursorPro-CLI-Windows/CursorPro.exe
-            artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro
-            artifacts/CursorPro-CLI-Linux/CursorPro
-            artifacts/CursorPro-CLI-MacOS-Intel/CursorPro
-            artifacts/CursorPro-GUI-Windows/CursorProGUI.exe
-            artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI.app/**
-            artifacts/CursorPro-GUI-Linux/CursorProGUI
-            artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI.app/**
+            artifacts/CursorPro-CLI-Windows/CursorPro-Windows.exe
+            artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro-MacOS-ARM64
+            artifacts/CursorPro-CLI-Linux/CursorPro-Linux
+            artifacts/CursorPro-CLI-MacOS-Intel/CursorPro-MacOS-Intel
+            artifacts/CursorPro-GUI-Windows/CursorProGUI-Windows.exe
+            artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI-MacOS-ARM64.app
+            artifacts/CursorPro-GUI-Linux/CursorProGUI-Linux
+            artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI-MacOS-Intel.app
+          generate_release_notes: true
 
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
