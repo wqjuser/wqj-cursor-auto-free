@@ -265,32 +265,18 @@ jobs:
         with:
           path: artifacts
           
-      - name: Create release archives
-        run: |
-          cd artifacts
-          # CLI版本归档
-          zip -r CursorPro-CLI-Windows.zip CursorPro-CLI-Windows/
-          zip -r CursorPro-CLI-MacOS-ARM64.zip CursorPro-CLI-MacOS-ARM64/
-          zip -r CursorPro-CLI-Linux.zip CursorPro-CLI-Linux/
-          zip -r CursorPro-CLI-MacOS-Intel.zip CursorPro-CLI-MacOS-Intel/
-          # GUI版本归档
-          zip -r CursorPro-GUI-Windows.zip CursorPro-GUI-Windows/
-          zip -r CursorPro-GUI-MacOS-ARM64.zip CursorPro-GUI-MacOS-ARM64/
-          zip -r CursorPro-GUI-Linux.zip CursorPro-GUI-Linux/
-          zip -r CursorPro-GUI-MacOS-Intel.zip CursorPro-GUI-MacOS-Intel/
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/CursorPro-CLI-Windows.zip
-            artifacts/CursorPro-CLI-MacOS-ARM64.zip
-            artifacts/CursorPro-CLI-Linux.zip
-            artifacts/CursorPro-CLI-MacOS-Intel.zip
-            artifacts/CursorPro-GUI-Windows.zip
-            artifacts/CursorPro-GUI-MacOS-ARM64.zip
-            artifacts/CursorPro-GUI-Linux.zip
-            artifacts/CursorPro-GUI-MacOS-Intel.zip
+            artifacts/CursorPro-CLI-Windows/CursorPro.exe
+            artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro
+            artifacts/CursorPro-CLI-Linux/CursorPro
+            artifacts/CursorPro-CLI-MacOS-Intel/CursorPro
+            artifacts/CursorPro-GUI-Windows/CursorProGUI.exe
+            artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI.app
+            artifacts/CursorPro-GUI-Linux/CursorProGUI
+            artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI.app
 
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
