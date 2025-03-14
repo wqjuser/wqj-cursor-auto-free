@@ -6,7 +6,6 @@ on:
       - 'v*'  # 添加标签触发条件，匹配 v1.0.0 这样的标签
 
 jobs:
-
   build-macos-intel-cli:
     runs-on: macos-latest
 
@@ -72,6 +71,7 @@ jobs:
         
     - name: Create DMG
       run: |
+        cd dist/mac
         create-dmg \
           --volname "CursorPro" \
           --window-pos 200 120 \
@@ -80,8 +80,8 @@ jobs:
           --icon "CursorProGUI-MacOS-Intel.app" 200 190 \
           --hide-extension "CursorProGUI-MacOS-Intel.app" \
           --app-drop-link 600 185 \
-          "dist/mac/CursorProGUI-MacOS-Intel.dmg" \
-          "dist/mac/CursorProGUI-MacOS-Intel.app"
+          "CursorProGUI-MacOS-Intel.dmg" \
+          "CursorProGUI-MacOS-Intel.app"
         
     - name: Upload MacOS Intel GUI artifact
       uses: actions/upload-artifact@v4
@@ -92,9 +92,9 @@ jobs:
 
   create-release:
     needs: [
-      # build-windows-cli, build-windows-gui,
-      # build-macos-arm64-cli, build-macos-arm64-gui,
-      # build-linux-cli, build-linux-gui,
+#      build-windows-cli, build-windows-gui,
+#      build-macos-arm64-cli, build-macos-arm64-gui,
+#      build-linux-cli, build-linux-gui,
       build-macos-intel-cli, build-macos-intel-gui
     ]
     runs-on: ubuntu-22.04

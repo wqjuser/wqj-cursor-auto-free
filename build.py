@@ -451,7 +451,17 @@ def run_pyinstaller(spec_file, output_dir, system):
 
 def check_build_result(output_dir, system, is_gui=False):
     """检查构建结果"""
-    app_name = "CursorProGUI" if is_gui else "CursorPro"
+    # 根据系统和架构设置文件名
+    if system == "darwin":  # macOS
+        arch = os.environ.get('MACOS_ARCH', '')
+        if arch == 'arm64':
+            app_name = "CursorPro-MacOS-ARM64" if not is_gui else "CursorProGUI-MacOS-ARM64"
+        else:
+            app_name = "CursorPro-MacOS-Intel" if not is_gui else "CursorProGUI-MacOS-Intel"
+    elif system == 'windows':
+        app_name = "CursorPro-Windows" if not is_gui else "CursorProGUI-Windows"
+    else:  # linux
+        app_name = "CursorPro-Linux" if not is_gui else "CursorProGUI-Linux"
     
     # 根据操作系统检查不同的输出文件
     if system == "darwin":  # macOS
