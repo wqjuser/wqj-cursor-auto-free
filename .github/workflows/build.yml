@@ -303,14 +303,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/windows-cli/CursorPro-Windows.exe
-            artifacts/windows-gui/CursorProGUI-Windows.exe
-            artifacts/macos-arm64-cli/CursorPro-MacOS-ARM64
-            artifacts/macos-arm64-gui/CursorProGUI-MacOS-ARM64.dmg
             artifacts/macos-intel-cli/CursorPro-MacOS-Intel
             artifacts/macos-intel-gui/CursorProGUI-MacOS-Intel.dmg
-            artifacts/linux-cli/CursorPro-Linux
-            artifacts/linux-gui/CursorProGUI-Linux
           generate_release_notes: true
 
         env:
