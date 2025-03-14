@@ -6,6 +6,7 @@ on:
       - 'v*'  # 添加标签触发条件，匹配 v1.0.0 这样的标签
 
 jobs:
+
   build-macos-intel-cli:
     runs-on: macos-latest
 
@@ -20,18 +21,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller
-        pip install --no-deps psutil
-        pip install -r requirements.txt
+        arch -x86_64 pip3 install --upgrade pip
+        arch -x86_64 pip3 install pyinstaller
+        arch -x86_64 pip3 install --no-deps psutil
+        arch -x86_64 pip3 install -r requirements.txt
 
     - name: Build MacOS Intel executable
-      env:
-        ARCHFLAGS: "-arch x86_64"
-        MACOS_ARCH: "x86_64"
-        TARGET_ARCH: "x86_64"
       run: |
-        python build.py
+        arch -x86_64 python build.py
         
     - name: Upload MacOS Intel artifact
       uses: actions/upload-artifact@v4
@@ -54,20 +51,16 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller
-        pip install --no-deps psutil
-        pip install -r requirements.txt
-        pip install PyQt6
+        arch -x86_64 pip3 install --upgrade pip
+        arch -x86_64 pip3 install pyinstaller
+        arch -x86_64 pip3 install --no-deps psutil
+        arch -x86_64 pip3 install -r requirements.txt
+        arch -x86_64 pip3 install PyQt6
         brew install create-dmg
 
     - name: Build MacOS Intel GUI executable
-      env:
-        ARCHFLAGS: "-arch x86_64"
-        MACOS_ARCH: "x86_64"
-        TARGET_ARCH: "x86_64"
       run: |
-        python build.py --gui
+        arch -x86_64 python build.py --gui
         
     - name: Create DMG
       run: |
@@ -92,9 +85,6 @@ jobs:
 
   create-release:
     needs: [
-#      build-windows-cli, build-windows-gui,
-#      build-macos-arm64-cli, build-macos-arm64-gui,
-#      build-linux-cli, build-linux-gui,
       build-macos-intel-cli, build-macos-intel-gui
     ]
     runs-on: ubuntu-22.04
