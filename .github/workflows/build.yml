@@ -32,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-cli
-        path: dist/windows/CursorPro.exe
+        path: dist/windows/CursorPro-Windows.exe
 
   # 新增 - Windows GUI版本
   build-windows-gui:
@@ -61,7 +61,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-gui
-        path: dist/windows/CursorProGUI.exe
+        path: dist/windows/CursorProGUI-Windows.exe
 
   build-macos-arm64-cli:
     runs-on: macos-14  # 使用 macos-14 runner，它是 ARM 架构
@@ -91,7 +91,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macos-arm64-cli
-        path: dist/mac/CursorPro
+        path: dist/mac/CursorPro-MacOS-ARM64
 
   # 新增 - macOS ARM64 GUI版本
   build-macos-arm64-gui:
@@ -127,11 +127,11 @@ jobs:
           --window-pos 200 120 \
           --window-size 800 400 \
           --icon-size 100 \
-          --icon "CursorProGUI.app" 200 190 \
-          --hide-extension "CursorProGUI.app" \
+          --icon "CursorProGUI-MacOS-ARM64.app" 200 190 \
+          --hide-extension "CursorProGUI-MacOS-ARM64.app" \
           --app-drop-link 600 185 \
           "dist/mac/CursorProGUI-MacOS-ARM64.dmg" \
-          "dist/mac/CursorProGUI.app"
+          "dist/mac/CursorProGUI-MacOS-ARM64.app"
         
     - name: Upload MacOS ARM GUI artifact
       uses: actions/upload-artifact@v4
@@ -169,7 +169,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macos-intel-cli
-        path: dist/mac/CursorPro
+        path: dist/mac/CursorPro-MacOS-Intel
 
   # 新增 - macOS Intel GUI版本
   build-macos-intel-gui:
@@ -207,11 +207,11 @@ jobs:
           --window-pos 200 120 \
           --window-size 800 400 \
           --icon-size 100 \
-          --icon "CursorProGUI.app" 200 190 \
-          --hide-extension "CursorProGUI.app" \
+          --icon "CursorProGUI-MacOS-Intel.app" 200 190 \
+          --hide-extension "CursorProGUI-MacOS-Intel.app" \
           --app-drop-link 600 185 \
           "dist/mac/CursorProGUI-MacOS-Intel.dmg" \
-          "dist/mac/CursorProGUI.app"
+          "dist/mac/CursorProGUI-MacOS-Intel.app"
         
     - name: Upload MacOS Intel GUI artifact
       uses: actions/upload-artifact@v4
@@ -244,7 +244,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: linux-cli
-        path: dist/linux/CursorPro
+        path: dist/linux/CursorPro-Linux
 
   # 新增 - Linux GUI版本
   build-linux-gui:
@@ -275,7 +275,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: linux-gui
-        path: dist/linux/CursorProGUI
+        path: dist/linux/CursorProGUI-Linux
 
   create-release:
     needs: [
@@ -297,14 +297,14 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/windows-cli/CursorPro.exe
-            artifacts/windows-gui/CursorProGUI.exe
-            artifacts/macos-arm64-cli/CursorPro
+            artifacts/windows-cli/CursorPro-Windows.exe
+            artifacts/windows-gui/CursorProGUI-Windows.exe
+            artifacts/macos-arm64-cli/CursorPro-MacOS-ARM64
             artifacts/macos-arm64-gui/CursorProGUI-MacOS-ARM64.dmg
-            artifacts/macos-intel-cli/CursorPro
+            artifacts/macos-intel-cli/CursorPro-MacOS-Intel
             artifacts/macos-intel-gui/CursorProGUI-MacOS-Intel.dmg
-            artifacts/linux-cli/CursorPro
-            artifacts/linux-gui/CursorProGUI
+            artifacts/linux-cli/CursorPro-Linux
+            artifacts/linux-gui/CursorProGUI-Linux
           generate_release_notes: true
 
         env:

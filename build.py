@@ -159,13 +159,26 @@ def create_manifest_file():
 
 def create_spec_file(is_gui=False):
     """创建PyInstaller规范文件"""
-    file_name = "CursorProGUI.spec" if is_gui else "CursorKeepAlive.spec"
+    system = platform.system().lower()
+    arch = os.environ.get('MACOS_ARCH', '')
+    
+    # 根据系统和架构设置文件名
+    if system == 'darwin':
+        if arch == 'arm64':
+            app_name = "CursorPro-MacOS-ARM64" if not is_gui else "CursorProGUI-MacOS-ARM64"
+        else:
+            app_name = "CursorPro-MacOS-Intel" if not is_gui else "CursorProGUI-MacOS-Intel"
+    elif system == 'windows':
+        app_name = "CursorPro-Windows" if not is_gui else "CursorProGUI-Windows"
+    else:  # linux
+        app_name = "CursorPro-Linux" if not is_gui else "CursorProGUI-Linux"
+    
+    file_name = f"{app_name}.spec"
     entry_point = "start_gui.py" if is_gui else "cursor_pro_keep_alive.py"
-    app_name = "CursorProGUI" if is_gui else "CursorPro"
     # 直接计算console值，不带引号，这样在spec文件中会是实际的布尔值
     console_value = "False" if is_gui else "True"    
     print(f"\033[93mCreating {file_name}...\033[0m")
-    
+    target_arch = os.environ.get('TARGET_ARCH', None)
     # 准备hiddenimports列表
     common_imports = [
         'requests',
@@ -251,6 +264,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
             bootloader_ignore_signals=False,
             strip=False,
             upx=True,
+            target_arch={target_arch},
             console=False,  # 设置为False以隐藏控制台窗口
             icon='icon.icns' if os.path.exists('icon.icns') else None,
         )
