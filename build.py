@@ -166,19 +166,23 @@ def create_spec_file(is_gui=False):
     if system == 'darwin':
         if arch == 'arm64':
             app_name = "CursorPro-MacOS-ARM64" if not is_gui else "CursorProGUI-MacOS-ARM64"
+            target_arch = "arm64"
         else:
             app_name = "CursorPro-MacOS-Intel" if not is_gui else "CursorProGUI-MacOS-Intel"
+            target_arch = "x86_64"
     elif system == 'windows':
         app_name = "CursorPro-Windows" if not is_gui else "CursorProGUI-Windows"
+        target_arch = None
     else:  # linux
         app_name = "CursorPro-Linux" if not is_gui else "CursorProGUI-Linux"
+        target_arch = None
     
     file_name = f"{app_name}.spec"
     entry_point = "start_gui.py" if is_gui else "cursor_pro_keep_alive.py"
     # 直接计算console值，不带引号，这样在spec文件中会是实际的布尔值
     console_value = "False" if is_gui else "True"    
     print(f"\033[93mCreating {file_name}...\033[0m")
-    target_arch = os.environ.get('TARGET_ARCH', None)
+    
     # 准备hiddenimports列表
     common_imports = [
         'requests',
@@ -264,7 +268,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
             bootloader_ignore_signals=False,
             strip=False,
             upx=True,
-            target_arch={target_arch},
+            target_arch='{target_arch}' if '{target_arch}' else None,
             console=False,  # 设置为False以隐藏控制台窗口
             icon='icon.icns' if os.path.exists('icon.icns') else None,
         )
@@ -343,7 +347,7 @@ if sys.platform == 'darwin':  # macOS specific configuration
             console=True,
             disable_windowed_traceback=False,
             argv_emulation=False,
-            target_arch=None,
+            target_arch='{target_arch}' if '{target_arch}' else None,
             codesign_identity=None,
             entitlements_file=None,
             icon='icon.icns' if os.path.exists('icon.icns') else None,

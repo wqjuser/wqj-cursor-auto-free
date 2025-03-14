@@ -73,6 +73,7 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
+        architecture: 'arm64'  # 明确指定 arm64 架构
     
     - name: Install dependencies
       run: |
@@ -84,6 +85,7 @@ jobs:
       env:
         ARCHFLAGS: "-arch arm64"
         MACOS_ARCH: "arm64"
+        TARGET_ARCH: "arm64"
       run: |
         python build.py
         
@@ -92,7 +94,7 @@ jobs:
       with:
         name: macos-arm64-cli
         path: dist/mac/CursorPro-MacOS-ARM64
-
+        
   # 新增 - macOS ARM64 GUI版本
   build-macos-arm64-gui:
     runs-on: macos-14  # 使用 macos-14 runner，它是 ARM 架构
@@ -104,6 +106,7 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
+        architecture: 'arm64'  # 明确指定 arm64 架构
     
     - name: Install dependencies
       run: |
@@ -117,6 +120,7 @@ jobs:
       env:
         ARCHFLAGS: "-arch arm64"
         MACOS_ARCH: "arm64"
+        TARGET_ARCH: "arm64"
       run: |
         python build.py --gui
         
@@ -162,6 +166,7 @@ jobs:
       env:
         ARCHFLAGS: "-arch x86_64"
         MACOS_ARCH: "x86_64"
+        TARGET_ARCH: "x86_64"
       run: |
         python build.py
         
@@ -197,6 +202,7 @@ jobs:
       env:
         ARCHFLAGS: "-arch x86_64"
         MACOS_ARCH: "x86_64"
+        TARGET_ARCH: "x86_64"
       run: |
         python build.py --gui
         
@@ -279,9 +285,9 @@ jobs:
 
   create-release:
     needs: [
-      build-windows-cli, build-windows-gui,
-      build-macos-arm64-cli, build-macos-arm64-gui,
-      build-linux-cli, build-linux-gui,
+      # build-windows-cli, build-windows-gui,
+      # build-macos-arm64-cli, build-macos-arm64-gui,
+      # build-linux-cli, build-linux-gui,
       build-macos-intel-cli, build-macos-intel-gui
     ]
     runs-on: ubuntu-22.04
