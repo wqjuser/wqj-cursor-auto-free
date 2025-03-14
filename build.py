@@ -160,14 +160,10 @@ def create_manifest_file():
 def create_spec_file(is_gui=False):
     """创建PyInstaller规范文件"""
     file_name = "CursorProGUI.spec" if is_gui else "CursorKeepAlive.spec"
-    entry_point = "cursor_gui.py" if is_gui else "cursor_pro_keep_alive.py"
+    entry_point = "start_gui.py" if is_gui else "cursor_pro_keep_alive.py"
     app_name = "CursorProGUI" if is_gui else "CursorPro"
     # 直接计算console值，不带引号，这样在spec文件中会是实际的布尔值
-    console_value = "False" if is_gui else "True"
-    
-    # 获取目标架构
-    target_arch = os.environ.get('TARGET_ARCH', None)
-    
+    console_value = "False" if is_gui else "True"    
     print(f"\033[93mCreating {file_name}...\033[0m")
     
     # 准备hiddenimports列表
@@ -199,9 +195,6 @@ def create_spec_file(is_gui=False):
     # 将列表转换为格式化的字符串
     hidden_imports = ',\n        '.join(f"'{item}'" for item in common_imports)
     
-    # 准备target_arch参数
-    target_arch_param = f", target_arch='{target_arch}'" if target_arch else ""
-    
     spec_content = f"""# -*- mode: python ; coding: utf-8 -*-
 
 import sys
@@ -212,6 +205,9 @@ block_cipher = None
 
 # 确保使用正确的manifest文件
 manifest_path = 'app.manifest'
+
+# 定义是否为GUI版本
+is_gui = {str(is_gui).capitalize()}
 
 a = Analysis(
     ['{entry_point}'],
@@ -244,76 +240,100 @@ a = Analysis(
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 if sys.platform == 'darwin':  # macOS specific configuration
-    exe = EXE(
-        pyz,
-        a.scripts,
-        [],
-        exclude_binaries=True,
-        name='{app_name}',
-        debug=False,
-        bootloader_ignore_signals=False,
-        strip=False,
-        upx=True,
-        console=False,  # 设置为False以隐藏控制台窗口
-        target_arch={target_arch},
-    )
-    
-    coll = COLLECT(
-        exe,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
-        strip=False,
-        upx=True,
-        upx_exclude=[],
-        name='{app_name}'
-    )
-    
-    app = BUNDLE(
-        coll,
-        name='{app_name}.app',
-        icon='icon.icns' if os.path.exists('icon.icns') else None,
-        bundle_identifier='com.cursor.pro.gui',
-        info_plist={{
-            'NSHighResolutionCapable': 'True',
-            'LSBackgroundOnly': 'False',
-            'CFBundleName': '{app_name}',
-            'CFBundleDisplayName': 'Cursor Pro GUI',
-            'CFBundleGetInfoString': 'Cursor Pro GUI Application',
-            'CFBundleVersion': '1.0.0',
-            'CFBundleShortVersionString': '1.0.0',
-            'CFBundleIdentifier': 'com.cursor.pro.gui',
-            'CFBundleExecutable': '{app_name}',
-            'CFBundlePackageType': 'APPL',
-            'CFBundleSignature': '????',
-            'LSMinimumSystemVersion': '10.13.0',
-            'NSAppleEventsUsageDescription': 'This app needs to access Apple Events for automation.',
-            'NSRequiresAquaSystemAppearance': 'No',
-            'LSApplicationCategoryType': 'public.app-category.utilities',
-            'NSPrincipalClass': 'NSApplication',
-            'NSAppleScriptEnabled': 'True',
-            'LSEnvironment': {{
-                'QT_MAC_WANTS_LAYER': '1',
-                'QT_MAC_WANTS_WINDOW': '1',
-                'QT_MAC_WANTS_FOCUS': '1',
-                'QT_MAC_WANTS_ACTIVATE': '1',
-                'QT_AUTO_SCREEN_SCALE_FACTOR': '1',
-                'QT_SCALE_FACTOR': '1',
-                'QT_ENABLE_HIGHDPI_SCALING': '1',
-                'OBJC_DISABLE_INITIALIZE_FORK_SAFETY': 'YES',
-                'PYTHONPATH': '.',
-                'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
-            }},
-            'LSUIElement': False,  # 允许在Dock中显示
-            'NSSupportsAutomaticGraphicsSwitching': True,
-            'NSRequiresAquaSystemAppearance': False,  # 支持暗色模式
-            'NSMicrophoneUsageDescription': 'This app does not need microphone access.',
-            'NSCameraUsageDescription': 'This app does not need camera access.',
-            'NSLocationUsageDescription': 'This app does not need location access.',
-            'NSDocumentsFolderUsageDescription': 'This app needs access to the Documents folder.',
-            'NSDesktopFolderUsageDescription': 'This app needs access to the Desktop folder.'
-        }}
-    )
+    if is_gui:  # GUI版本生成.app
+        exe = EXE(
+            pyz,
+            a.scripts,
+            [],
+            exclude_binaries=True,
+            name='{app_name}',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=True,
+            console=False,  # 设置为False以隐藏控制台窗口
+            icon='icon.icns' if os.path.exists('icon.icns') else None,
+        )
+        
+        coll = COLLECT(
+            exe,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            strip=False,
+            upx=True,
+            upx_exclude=[],
+            name='{app_name}',
+        )
+        
+        app = BUNDLE(
+            coll,
+            name='{app_name}.app',
+            icon='icon.icns' if os.path.exists('icon.icns') else None,
+            bundle_identifier='com.cursor.pro.gui',
+            info_plist={{
+                'NSHighResolutionCapable': 'True',
+                'LSBackgroundOnly': 'False',
+                'CFBundleName': '{app_name}',
+                'CFBundleDisplayName': 'Cursor Pro GUI',
+                'CFBundleGetInfoString': 'Cursor Pro GUI Application',
+                'CFBundleVersion': '1.0.0',
+                'CFBundleShortVersionString': '1.0.0',
+                'CFBundleIdentifier': 'com.cursor.pro.gui',
+                'CFBundleExecutable': '{app_name}',
+                'CFBundlePackageType': 'APPL',
+                'CFBundleSignature': '????',
+                'LSMinimumSystemVersion': '10.13.0',
+                'NSAppleEventsUsageDescription': 'This app needs to access Apple Events for automation.',
+                'NSRequiresAquaSystemAppearance': 'No',
+                'LSApplicationCategoryType': 'public.app-category.utilities',
+                'NSPrincipalClass': 'NSApplication',
+                'NSAppleScriptEnabled': 'True',
+                'LSEnvironment': {{
+                    'QT_MAC_WANTS_LAYER': '1',
+                    'QT_MAC_WANTS_WINDOW': '1',
+                    'QT_MAC_WANTS_FOCUS': '1',
+                    'QT_MAC_WANTS_ACTIVATE': '1',
+                    'QT_AUTO_SCREEN_SCALE_FACTOR': '1',
+                    'QT_SCALE_FACTOR': '1',
+                    'QT_ENABLE_HIGHDPI_SCALING': '1',
+                    'OBJC_DISABLE_INITIALIZE_FORK_SAFETY': 'YES',
+                    'PYTHONPATH': '.',
+                    'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+                }},
+                'LSUIElement': False,  # 允许在Dock中显示
+                'NSSupportsAutomaticGraphicsSwitching': True,
+                'NSRequiresAquaSystemAppearance': False,  # 支持暗色模式
+                'NSMicrophoneUsageDescription': 'This app does not need microphone access.',
+                'NSCameraUsageDescription': 'This app does not need camera access.',
+                'NSLocationUsageDescription': 'This app does not need location access.',
+                'NSDocumentsFolderUsageDescription': 'This app needs access to the Documents folder.',
+                'NSDesktopFolderUsageDescription': 'This app needs access to the Desktop folder.'
+            }}
+        )
+    else:  # 命令行版本生成Unix可执行文件
+        exe = EXE(
+            pyz,
+            a.scripts,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            [],
+            name='{app_name}',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=True,
+            upx_exclude=[],
+            runtime_tmpdir=None,
+            console=True,
+            disable_windowed_traceback=False,
+            argv_emulation=False,
+            target_arch=None,
+            codesign_identity=None,
+            entitlements_file=None,
+            icon='icon.icns' if os.path.exists('icon.icns') else None,
+        )
 else:  # Windows and Linux configuration
     exe = EXE(
         pyz,
@@ -390,6 +410,17 @@ def run_pyinstaller(spec_file, output_dir, system):
             if filtered_errors:
                 print("\033[93mBuild Warnings/Errors:\033[0m")
                 print("\n".join(filtered_errors))
+        
+        # 清理macOS GUI构建时生成的中间文件夹
+        if system == "darwin" and "GUI" in spec_file:
+            app_name = "CursorProGUI"
+            intermediate_folder = os.path.join(output_dir, app_name)
+            if os.path.exists(intermediate_folder) and os.path.isdir(intermediate_folder):
+                print(f"\033[93m清理中间文件夹: {intermediate_folder}\033[0m")
+                try:
+                    shutil.rmtree(intermediate_folder)
+                except Exception as e:
+                    print(f"\033[91m清理中间文件夹失败: {str(e)}\033[0m")
 
         return True
     except Exception as e:
@@ -406,14 +437,24 @@ def check_build_result(output_dir, system, is_gui=False):
     
     # 根据操作系统检查不同的输出文件
     if system == "darwin":  # macOS
-        app_path = os.path.join(output_dir, f"{app_name}.app")
-        if os.path.exists(app_path) and os.path.isdir(app_path):
-            print(f"\n\033[92mBuild completed successfully!\033[0m")
-            print(f"\033[92m{app_name}.app has been created at: {app_path}\033[0m")
-            return True
-        else:
-            print(f"\n\033[91mBuild failed: {app_name}.app was not created\033[0m")
-            return False
+        if is_gui:  # GUI版本检查.app文件
+            app_path = os.path.join(output_dir, f"{app_name}.app")
+            if os.path.exists(app_path):
+                print(f"\n\033[92mBuild completed successfully!\033[0m")
+                print(f"\033[92m{app_name}.app has been created at: {app_path}\033[0m")
+                return True
+            else:
+                print(f"\n\033[91mBuild failed: {app_name}.app was not created\033[0m")
+                return False
+        else:  # 命令行版本检查Unix可执行文件
+            exe_path = os.path.join(output_dir, app_name)
+            if os.path.exists(exe_path):
+                print(f"\n\033[92mBuild completed successfully!\033[0m")
+                print(f"\033[92m{app_name} has been created at: {exe_path}\033[0m")
+                return True
+            else:
+                print(f"\n\033[91mBuild failed: {app_name} was not created\033[0m")
+                return False
     else:  # Windows 或 Linux
         exe_path = os.path.join(output_dir, f"{app_name}.exe" if system == "windows" else app_name)
         if os.path.exists(exe_path):
