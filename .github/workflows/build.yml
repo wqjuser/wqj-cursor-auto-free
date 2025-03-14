@@ -31,7 +31,7 @@ jobs:
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-CLI-Windows
+        name: windows-cli
         path: dist/windows/CursorPro.exe
 
   # 新增 - Windows GUI版本
@@ -60,7 +60,7 @@ jobs:
     - name: Upload Windows GUI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-GUI-Windows
+        name: windows-gui
         path: dist/windows/CursorProGUI.exe
 
   build-macos-arm64-cli:
@@ -90,7 +90,7 @@ jobs:
     - name: Upload MacOS ARM artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-CLI-MacOS-ARM64
+        name: macos-arm64-cli
         path: dist/mac/CursorPro
 
   # 新增 - macOS ARM64 GUI版本
@@ -111,6 +111,7 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
         pip install PyQt6
+        brew install create-dmg
         
     - name: Build MacOS ARM GUI executable
       env:
@@ -119,11 +120,24 @@ jobs:
       run: |
         python build.py --gui
         
+    - name: Create DMG
+      run: |
+        create-dmg \
+          --volname "CursorPro" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "CursorProGUI.app" 200 190 \
+          --hide-extension "CursorProGUI.app" \
+          --app-drop-link 600 185 \
+          "dist/mac/CursorProGUI-MacOS-ARM64.dmg" \
+          "dist/mac/CursorProGUI.app"
+        
     - name: Upload MacOS ARM GUI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-GUI-MacOS-ARM64
-        path: dist/mac/CursorProGUI.app
+        name: macos-arm64-gui
+        path: dist/mac/CursorProGUI-MacOS-ARM64.dmg
 
   build-macos-intel-cli:
     runs-on: macos-latest
@@ -154,7 +168,7 @@ jobs:
     - name: Upload MacOS Intel artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-CLI-MacOS-Intel
+        name: macos-intel-cli
         path: dist/mac/CursorPro
 
   # 新增 - macOS Intel GUI版本
@@ -177,6 +191,7 @@ jobs:
         pip install --no-deps psutil
         pip install -r requirements.txt
         pip install PyQt6
+        brew install create-dmg
 
     - name: Build MacOS Intel GUI executable
       env:
@@ -185,11 +200,24 @@ jobs:
       run: |
         python build.py --gui
         
+    - name: Create DMG
+      run: |
+        create-dmg \
+          --volname "CursorPro" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "CursorProGUI.app" 200 190 \
+          --hide-extension "CursorProGUI.app" \
+          --app-drop-link 600 185 \
+          "dist/mac/CursorProGUI-MacOS-Intel.dmg" \
+          "dist/mac/CursorProGUI.app"
+        
     - name: Upload MacOS Intel GUI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-GUI-MacOS-Intel
-        path: dist/mac/CursorProGUI.app
+        name: macos-intel-gui
+        path: dist/mac/CursorProGUI-MacOS-Intel.dmg
 
   build-linux-cli:
     runs-on: ubuntu-22.04
@@ -215,7 +243,7 @@ jobs:
     - name: Upload Linux artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-CLI-Linux
+        name: linux-cli
         path: dist/linux/CursorPro
 
   # 新增 - Linux GUI版本
@@ -246,7 +274,7 @@ jobs:
     - name: Upload Linux GUI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CursorPro-GUI-Linux
+        name: linux-gui
         path: dist/linux/CursorProGUI
 
   create-release:
@@ -265,33 +293,18 @@ jobs:
         with:
           path: artifacts
           
-      - name: List downloaded files
-        run: |
-          ls -R artifacts/
-          
-      - name: Rename files
-        run: |
-          mv artifacts/CursorPro-CLI-Windows/CursorPro.exe artifacts/CursorPro-CLI-Windows/CursorPro-Windows.exe
-          mv artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro-MacOS-ARM64
-          mv artifacts/CursorPro-CLI-Linux/CursorPro artifacts/CursorPro-CLI-Linux/CursorPro-Linux
-          mv artifacts/CursorPro-CLI-MacOS-Intel/CursorPro artifacts/CursorPro-CLI-MacOS-Intel/CursorPro-MacOS-Intel
-          mv artifacts/CursorPro-GUI-Windows/CursorProGUI.exe artifacts/CursorPro-GUI-Windows/CursorProGUI-Windows.exe
-          mv artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI.app artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI-MacOS-ARM64.app
-          mv artifacts/CursorPro-GUI-Linux/CursorProGUI artifacts/CursorPro-GUI-Linux/CursorProGUI-Linux
-          mv artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI.app artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI-MacOS-Intel.app
-          
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/CursorPro-CLI-Windows/CursorPro-Windows.exe
-            artifacts/CursorPro-CLI-MacOS-ARM64/CursorPro-MacOS-ARM64
-            artifacts/CursorPro-CLI-Linux/CursorPro-Linux
-            artifacts/CursorPro-CLI-MacOS-Intel/CursorPro-MacOS-Intel
-            artifacts/CursorPro-GUI-Windows/CursorProGUI-Windows.exe
-            artifacts/CursorPro-GUI-MacOS-ARM64/CursorProGUI-MacOS-ARM64.app
-            artifacts/CursorPro-GUI-Linux/CursorProGUI-Linux
-            artifacts/CursorPro-GUI-MacOS-Intel/CursorProGUI-MacOS-Intel.app
+            artifacts/windows-cli/CursorPro.exe
+            artifacts/windows-gui/CursorProGUI.exe
+            artifacts/macos-arm64-cli/CursorPro
+            artifacts/macos-arm64-gui/CursorProGUI-MacOS-ARM64.dmg
+            artifacts/macos-intel-cli/CursorPro
+            artifacts/macos-intel-gui/CursorProGUI-MacOS-Intel.dmg
+            artifacts/linux-cli/CursorPro
+            artifacts/linux-gui/CursorProGUI
           generate_release_notes: true
 
         env:
