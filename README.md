@@ -90,13 +90,13 @@ win电脑直接双击运行可执行文件即可，会自动申请权限
 mac电脑需要在命令行内导航到CursorPro文件所在的路径，然后运行命令 
 
 ```bash
-chmod +x CursorPro
+chmod +x CursorPro-MacOS-Intel
 ```
 
 然后回车，接着执行命令
 
 ```bash
-sudo ./CursorPro
+sudo ./CursorPro-MacOS-Intel
 ```
 
 ## 
