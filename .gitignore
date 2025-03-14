@@ -1,8 +1,7 @@
 # PyInstaller
 build/
 dist/
-!CursorKeepAlive.mac.spec
-!CursorKeepAlive.win.spec
+*.spec
 
 # Python
 __pycache__/

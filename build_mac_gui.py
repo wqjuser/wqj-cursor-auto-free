@@ -240,7 +240,7 @@ import platform
 import pathlib
 
 def get_bundle_resource_path():
-    """获取应用包资源路径"""
+    
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         # PyInstaller打包的应用
         bundle_path = pathlib.Path(sys._MEIPASS).parent
@@ -256,7 +256,7 @@ def get_bundle_resource_path():
         return pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 
 def main():
-    """主函数，负责启动应用"""
+    
     # 获取当前路径
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
