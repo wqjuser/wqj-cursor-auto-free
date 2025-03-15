@@ -1,10 +1,11 @@
 import ctypes
 import os
+import subprocess
 import sys
 import urllib.parse
 from enum import Enum
 from typing import Optional
-import subprocess
+
 import requests  # 添加到文件顶部的导入部分
 
 import refresh_data
@@ -377,6 +378,9 @@ class EmailGenerator:
         timestamp = str(int(time.time()))[-6:]  # 使用时间戳后6位
         # 每次从 config 获取随机域名
         domain = self.config.get_domain()
+        if not domain:
+            logging.error("未配置域名，无法生成邮箱")
+            return None
         return f"{random_str}{timestamp}@{domain}"
 
     def get_account_info(self):
@@ -417,7 +421,7 @@ def get_verification_code_from_ui():
         return None
 
 
-def sign_in_account(tab, email, password=None, is_gui = False):
+def sign_in_account(tab, email, password=None, is_gui=False):
     """登录Cursor账号"""
     logging.info("=== 开始登录账号流程 ===")
     login_url = "https://authenticator.cursor.sh"
@@ -460,7 +464,7 @@ def sign_in_account(tab, email, password=None, is_gui = False):
                 # 提示用户输入验证码
                 logging.info("\n请查看邮箱获取验证码")
                 handle_turnstile(tab)
-                
+
                 # 根据是否是GUI模式选择不同的验证码获取方式
                 if is_gui:
                     verification_code = get_verification_code_from_ui()
@@ -569,7 +573,7 @@ def check_version():
 
 def restart_cursor(cursor_path):
     print("\n现在可以重新启动 Cursor 了，为避免Cursor程序的运行权限问题，不再支持脚本重启，请手动启动Cursor")
-    
+
     # if cursor_path:
     #     print("现在可以重新启动 Cursor 了。")
 
@@ -593,67 +597,69 @@ def inner_restart_cursor(cursor_path):
             import ctypes
             import tempfile
             import uuid
-            
+
             # 确保cursor_path是有效的
             if not os.path.exists(cursor_path):
                 logging.error(f"Cursor路径不存在: {cursor_path}")
                 os._exit(1)
-                
+
             # 获取当前用户名
             current_user = os.environ.get('USERNAME')
             logging.info(f"当前用户: {current_user}")
-            
+
             # 生成唯一的任务名称
             task_name = f"StartCursor_{uuid.uuid4().hex[:8]}"
-            
+
             # 创建一个临时批处理文件来启动Cursor
             temp_dir = tempfile.gettempdir()
             batch_file = os.path.join(temp_dir, f"start_cursor_{task_name}.bat")
-            
+
             # 批处理文件内容 - 直接启动Cursor
             batch_content = f"""@echo off
 start "" "{cursor_path}"
 exit
 """
-            
+
             # 写入批处理文件
             with open(batch_file, 'w') as f:
                 f.write(batch_content)
-            
+
             logging.info(f"创建临时批处理文件: {batch_file}")
-            
+
             # 使用schtasks命令创建一个立即运行的任务
             # 这个任务会以当前用户的权限运行，而不是以管理员权限
             cmd = f'schtasks /create /tn "{task_name}" /tr "{batch_file}" /sc once /st 00:00 /ru "{current_user}" /f'
             logging.info(f"创建任务: {cmd}")
-            
+
             # 创建任务
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            process = subprocess.Popen(cmd, shell=True, startupinfo=startupinfo, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(cmd, shell=True, startupinfo=startupinfo, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
-            
+
             if process.returncode != 0:
                 logging.error(f"创建任务失败: {stderr.decode('gbk', errors='ignore')}")
                 os._exit(1)
-                
+
             # 立即运行任务
             run_cmd = f'schtasks /run /tn "{task_name}"'
             logging.info(f"运行任务: {run_cmd}")
-            process = subprocess.Popen(run_cmd, shell=True, startupinfo=startupinfo, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(run_cmd, shell=True, startupinfo=startupinfo, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
-            
+
             if process.returncode != 0:
                 logging.error(f"运行任务失败: {stderr.decode('gbk', errors='ignore')}")
                 os._exit(1)
-                
+
             # 等待一段时间确保进程启动
             time.sleep(2)
-            
+
             # 删除任务
             delete_cmd = f'schtasks /delete /tn "{task_name}" /f'
             subprocess.Popen(delete_cmd, shell=True, startupinfo=startupinfo)
-            
+
             # 检查Cursor是否已启动
             cursor_running = False
             for proc in psutil.process_iter(['pid', 'name']):
@@ -663,22 +669,22 @@ exit
                         break
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
-            
+
             if cursor_running:
                 logging.info("成功启动Cursor")
             else:
                 logging.warning("启动Cursor失败")
-                
+
             # 尝试清理临时文件
             try:
                 os.remove(batch_file)
                 logging.info("已清理临时文件")
             except Exception as e:
                 logging.warning(f"清理临时文件失败: {str(e)}")
-                
+
         else:  # macOS/Linux系统
             subprocess.Popen(['open', cursor_path])
-            
+
         logging.info("Cursor 已重新启动")
         # os._exit(0)
     except Exception as exception:
@@ -713,6 +719,9 @@ def try_register(is_auto_register=False):
     email_generator = EmailGenerator()
     account_info = email_generator.get_account_info()  # 获取包含随机密码的账号信息
     account = account_info["email"]
+    if not account:
+        logging.error("未生成邮箱，跳过当前账号注册")
+        return browser_manager, False
     password = account_info["password"]
     first_name = account_info["first_name"]
     last_name = account_info["last_name"]

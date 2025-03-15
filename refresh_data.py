@@ -47,6 +47,9 @@ class EmailGenerator:
         """生成随机邮箱地址"""
         random_str = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=length))
         timestamp = str(int(time.time()))[-6:]  # 使用时间戳后6位
+        if not self.domain:
+            logging.error("未配置域名，无法生成邮箱")
+            return None
         return f"{random_str}{timestamp}@{self.domain}"
 
     def get_account_info(self):
@@ -431,6 +434,10 @@ def batch_register(num_accounts):
             email_generator = EmailGenerator()
             account_info = email_generator.get_account_info()
             email = account_info["email"]
+            if not email:
+                logging.error("未生成邮箱，跳过当前账号注册")
+                failed_attempts += 1
+                break
             password = account_info["password"]
             first_name = account_info["first_name"]
             last_name = account_info["last_name"]

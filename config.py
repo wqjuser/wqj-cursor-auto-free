@@ -22,8 +22,8 @@ class Config:
             return
 
         self._initialized = True
-        
-        self.version = "0.4.1"
+
+        self.version = "0.4.2"
 
         # 获取应用程序的根目录路径
         if getattr(sys, "frozen", False):
@@ -35,15 +35,15 @@ class Config:
 
         # 指定 .env 文件的路径
         dotenv_path = os.path.join(application_path, ".env")
-        self._domains = [
-            "wqj666.ggff.net",
-            "wqjsonder.ggff.net",
-            "wqjnb.ggff.net",
-            ]
+        self._domains = []
         # 设置默认值
         self.imap = False
         self.temp_mail = "sonder"  # 默认设置为 sonder
-        self.domain = random.choice(self._domains)
+        if len(self._domains) > 0:
+            self.domain = random.choice(self._domains)
+        else:
+            self.domain =''
+
         # 不设置默认API URL，必须从环境变量中读取
 
         # 检查是否支持颜色输出
@@ -89,7 +89,7 @@ class Config:
                 except:
                     # 如果解析失败，使用原始字符串
                     self.domain = env_domain.strip()
-            
+
             env_temp_mail = os.getenv("TEMP_MAIL", "").strip()
 
             # 只有当环境变量中存在 TEMP_MAIL 时才覆盖默认值
@@ -118,7 +118,7 @@ class Config:
     def get_temp_mail(self):
 
         return self.temp_mail
-    
+
     def get_version(self):
         return self.version
 
@@ -137,6 +137,7 @@ class Config:
         """返回域名
         如果存在环境变量配置的域名，则从配置的域名数组中随机返回一个
         否则随机返回一个默认域名
+        如果没有配置域名且默认域名列表为空，则返回空字符串
         """
         env_domain = os.getenv("DOMAIN")
         if env_domain and self.check_is_valid(env_domain):
@@ -148,6 +149,9 @@ class Config:
             except:
                 # 如果解析失败，返回原始字符串
                 return env_domain.strip()
+        # 检查默认域名列表是否为空
+        if not self._domains:
+            return ""
         return random.choice(self._domains)
 
     def get_api_base_url(self):
@@ -241,7 +245,7 @@ class Config:
                 if self.imap_dir != "null" and not self.check_is_valid(self.imap_dir):
                     logging.error("IMAP收件箱目录配置无效，请在 .env 文件中正确设置 IMAP_DIR")
                     return False
-            
+
             # 检查邮箱API配置 - 这些是可选的
             if os.getenv("EMAIL_BASE_URL") and not self.check_is_valid(os.getenv("EMAIL_BASE_URL")):
                 logging.warning("EMAIL_BASE_URL未配置或无效")
@@ -252,7 +256,8 @@ class Config:
                 logging.warning("API_BASE_URL配置无效")
             if os.getenv("API_ACCOUNTS_URL") and not self.check_is_valid(os.getenv("API_ACCOUNTS_URL")):
                 logging.warning("API_ACCOUNTS_URL配置无效")
-            if os.getenv("API_AVAILABLE_ACCOUNTS_URL") and not self.check_is_valid(os.getenv("API_AVAILABLE_ACCOUNTS_URL")):
+            if os.getenv("API_AVAILABLE_ACCOUNTS_URL") and not self.check_is_valid(
+                    os.getenv("API_AVAILABLE_ACCOUNTS_URL")):
                 logging.warning("API_AVAILABLE_ACCOUNTS_URL配置无效")
             if os.getenv("API_MARK_USED_URL_PREFIX") and not self.check_is_valid(os.getenv("API_MARK_USED_URL_PREFIX")):
                 logging.warning("API_MARK_USED_URL_PREFIX配置无效")
@@ -299,6 +304,7 @@ class Config:
         else:
             yellow = ""
             reset = ""
+
 
 # 使用示例
 if __name__ == "__main__":
