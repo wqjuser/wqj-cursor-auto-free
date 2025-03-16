@@ -31,6 +31,7 @@ import psutil
 # 定义 EMOJI 字典
 EMOJI = {"ERROR": "❌", "WARNING": "⚠️", "INFO": "ℹ️"}
 
+verification_code = None
 
 class VerificationStatus(Enum):
     """验证状态枚举"""
@@ -293,7 +294,6 @@ def sign_up_account(tab, is_auto_register=False):
                 break
             if tab.ele("@data-index=0"):
                 logging.info("正在获取邮箱验证码...")
-                # code = email_handler.get_verification_code()
                 code = new_email_handler.wait_for_verification_code(email_box_id)
                 if not code:
                     logging.error("获取验证码失败")
@@ -408,17 +408,12 @@ def get_user_agent():
 
 
 def get_verification_code_from_ui():
-    """从UI界面获取验证码
-    Returns:
-        str: 用户输入的验证码
-    """
+    """从UI界面获取验证码"""
     try:
-        # 从GUI获取验证码
-        from cursor_gui import CursorProGUI
-        return CursorProGUI.get_verification_code()
+        return verification_code
     except Exception as e:
         logging.error(f"从UI获取验证码失败: {str(e)}")
-        return None
+    return None
 
 
 def sign_in_account(tab, email, password=None, is_gui=False):
@@ -467,10 +462,33 @@ def sign_in_account(tab, email, password=None, is_gui=False):
 
                 # 根据是否是GUI模式选择不同的验证码获取方式
                 if is_gui:
-                    verification_code = get_verification_code_from_ui()
-                    if not verification_code:
-                        logging.error("未能从UI获取验证码")
+                    # 在GUI模式下，发出验证码输入请求信号，但不立即获取验证码
+                    # 而是由worker线程通过verification_code_signal发送信号
+                    # 让GUI显示验证码输入界面，用户输入后会调用receive_verification_code
+                    # 在这里，我们应该等待验证码被设置
+                    global verification_code
+                    verification_code = None  # 确保开始时为空
+                    
+                    # 如果是在GUI模式下，需要通知GUI显示验证码输入界面
+                    # 这通常是通过信号实现的，在这里我们可以假设CursorProGUI实例会监听这个信号
+                    # 并显示验证码输入界面，然后等待用户输入
+                    logging.info("等待用户在UI界面输入验证码...")
+                    # 等待verification_code被设置
+                    # 注意：在实际应用中，这里应该有一个更好的等待机制，比如事件或信号
+                    max_wait_time = 120  # 最多等待120秒
+                    wait_interval = 10  # 每次检查间隔10秒
+                    waited_time = 0
+                    
+                    while verification_code is None and waited_time < max_wait_time:
+                        time.sleep(wait_interval)
+                        waited_time += wait_interval
+                        logging.info(f"等待验证码中... 已等待 {waited_time} 秒")
+                    
+                    if verification_code is None:
+                        logging.error(f"等待验证码超时，{max_wait_time}秒内未收到验证码")
                         return False
+                    
+                    logging.info(f"从UI界面获取到验证码: {verification_code}")
                 else:
                     verification_code = input("请输入验证码: ").strip()
 
@@ -495,10 +513,15 @@ def sign_in_account(tab, email, password=None, is_gui=False):
             logging.info("登录成功!")
             return True
     except:
-        logging.error("登录失败")
+        logging.error("登录失败!")
         return False
 
     return False
+
+def receive_verification_code(code):
+    """接收验证码"""
+    global verification_code
+    verification_code = code
 
 
 def show_menu():
@@ -1134,17 +1157,6 @@ if __name__ == "__main__":
         log_dir = "logs"
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-
-        # 创建一个文件处理器，将日志写入文件
-        # log_file = os.path.join(log_dir, f"cursor_pro_{int(time.time())}.log")
-        # file_handler = logging.FileHandler(log_file, encoding='utf-8')
-        # file_handler.setLevel(logging.DEBUG)
-        # formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
-        # file_handler.setFormatter(formatter)
-        # logging.getLogger().addHandler(file_handler)
-
-        # 记录启动信息
-        # logging.info("程序启动")
 
         # 运行主程序
         asyncio.run(main())
