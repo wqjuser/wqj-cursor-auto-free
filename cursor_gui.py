@@ -1061,77 +1061,67 @@ class LoginDialog(QDialog):
             # 确保登录按钮可用
             self.confirm_login_button.setEnabled(True)
 
-            # 修改执行按钮文本
+            # 修改执行按钮文本和行为
             self.execute_button.setText("继续")
+
+            # 确保执行按钮点击时执行的是正确的操作
+            try:
+                # 断开所有之前的连接
+                self.execute_button.clicked.disconnect()
+            except:
+                pass  # 如果没有连接，会抛出异常，忽略它
+
+            # 重新连接到特定的登录准备功能
+            self.execute_button.clicked.connect(self.prepare_login)
+
         else:
             # 隐藏登录表单区域
             self.login_form_area.setVisible(False)
 
-            # 恢复执行按钮文本
+            # 恢复执行按钮文本和行为
             self.execute_button.setText("执行")
 
-    def clear_log(self):
-        self.log_text.clear()
-        self.log_handler.info("日志已清除")
+            # 重新连接到默认的执行功能
+            try:
+                self.execute_button.clicked.disconnect()
+            except:
+                pass
 
-    def check_version(self):
-        # 尝试调用check_version函数
-        self.log_handler.info("正在检查版本...")
+            self.execute_button.clicked.connect(self.execute_function)
+
+    # 添加一个新方法专门处理登录准备
+    def prepare_login(self):
         try:
-            # 捕获check_version函数的输出
-            check_version()
-            self.log_handler.info("版本检查完成")
+            # 获取登录信息
+            email = self.login_email_input.text().strip()
+            password = self.login_password_input.text().strip()
+            login_type = "password" if self.login_type_combo.currentIndex() == 0 else "code"
+
+            # 验证基本输入
+            if not email:
+                self.log_handler.error("邮箱不能为空")
+                return
+
+            if login_type == "password" and not password:
+                self.log_handler.error("密码不能为空")
+                return
+
+            # 禁用按钮防止重复点击
+            self.execute_button.setEnabled(False)
+
+            # 执行登录任务
+            self.execute_task("login", {
+                "email": email,
+                "password": password,
+                "login_type": login_type,
+                "device_reset_done": False  # 需要先重置设备
+            })
+
         except Exception as e:
-            self.log_handler.error(f"检查版本出错: {str(e)}")
-
-    def show_verification_dialog(self):
-        """显示验证码输入区域"""
-        logging.info("显示验证码输入区域...")
-        try:
-            # 显示验证码输入区域
-            self.verification_code_label.setVisible(True)
-            self.verification_code_input.setVisible(True)
-            self.verification_code_submit.setVisible(True)
-            self.verification_code_submit.setEnabled(True)
-
-            # 清空之前的输入
-            self.verification_code_input.clear()
-
-            # 给验证码输入框焦点
-            self.verification_code_input.setFocus()
-
-            self.log_handler.info("请在验证码输入框中输入您收到的验证码")
-
-        except Exception as e:
-            logging.error(f"显示验证码输入区域时出错: {str(e)}")
             import traceback
-            logging.error(traceback.format_exc())
-
-    def handle_verification_code(self):
-        """处理验证码输入"""
-        logging.info("处理验证码输入...")
-        if self.verification_dialog:
-            code = self.verification_dialog.get_code()
-            logging.info(f"获取到验证码: {code}")
-            if code:
-                if self.worker:
-                    logging.info("将验证码传递给worker")
-                    self.worker.handle_verification_code(code)
-                else:
-                    logging.error("未找到worker实例")
-            else:
-                logging.error("验证码为空")
-            self.verification_dialog = None
-        else:
-            logging.error("未找到验证码对话框")
-
-    def handle_verification_cancelled(self):
-        """处理验证码输入取消"""
-        logging.info("用户取消了验证码输入")
-        if self.worker:
-            self.worker.handle_verification_cancelled()
-        if self.verification_dialog:
-            self.verification_dialog = None
+            error_msg = f"准备登录时出错: {str(e)}\n{traceback.format_exc()}"
+            self.log_handler.error(error_msg)
+            self.execute_button.setEnabled(True)
 
     def execute_function(self):
         # 获取选中的功能索引
@@ -1147,7 +1137,199 @@ class LoginDialog(QDialog):
                 self.log_handler.error("未获得管理员权限，无法执行此操作")
                 self.execute_button.setEnabled(True)
                 return
+        if index < 5:  # 前5个功能需要先退出Cursor
+            self.log_handler.info("正在检查并关闭Cursor...")
+            try:
+                # 使用更直接的方式捕获ExitCursor的输出
+                import io
+                import contextlib
+                import sys
+                import logging
 
+                # 确保最新的日志立即显示
+                QApplication.processEvents()
+
+                # 创建一个特殊的日志处理器来捕获ExitCursor的日志
+                class ExitCursorLogHandler(logging.Handler):
+                    def __init__(self, log_func):
+                        super().__init__()
+                        self.log_func = log_func
+
+                    def emit(self, record):
+                        msg = self.format(record)
+                        self.log_func(f"Cursor退出: {msg}")
+
+                # 配置日志记录器来捕获ExitCursor的日志
+                exit_logger = logging.getLogger('cursor_pro_keep_alive')
+                original_handlers = exit_logger.handlers.copy()
+                exit_logger.handlers.clear()  # 清除现有处理器
+
+                # 添加我们的自定义处理器
+                exit_handler = ExitCursorLogHandler(self.log_handler.info)
+                exit_handler.setFormatter(logging.Formatter('%(message)s'))
+                exit_logger.addHandler(exit_handler)
+                exit_logger.setLevel(logging.INFO)
+                exit_logger.propagate = False  # 防止日志传播
+
+                # 使用StringIO捕获标准输出和标准错误
+                stdout_capture = io.StringIO()
+                stderr_capture = io.StringIO()
+
+                # 备份当前的标准输出和标准错误
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+
+                # 将标准输出和标准错误重定向到我们的捕获对象
+                sys.stdout = stdout_capture
+                sys.stderr = stderr_capture
+
+                try:
+                    # 执行ExitCursor操作，在macOS上可能需要特殊处理
+                    QApplication.processEvents()
+
+                    if self.is_macos and self.has_permission:
+                        # macOS下使用管理员权限退出Cursor
+                        success, cursor_path = self.exit_cursor_macos()
+                    else:
+                        # 其他平台使用普通方式
+                        success, cursor_path = ExitCursor()
+
+                    # 捕获标准输出中的日志信息
+                    stdout_log = stdout_capture.getvalue()
+                    stderr_log = stderr_capture.getvalue()
+
+                    # 将捕获的日志显示在GUI中
+                    if stdout_log:
+                        for line in stdout_log.splitlines():
+                            if line.strip():
+                                self.log_handler.info(f"Cursor退出: {line.strip()}")
+                                QApplication.processEvents()  # 确保UI更新
+
+                    if stderr_log:
+                        for line in stderr_log.splitlines():
+                            if line.strip():
+                                self.log_handler.error(f"Cursor退出错误: {line.strip()}")
+                                QApplication.processEvents()  # 确保UI更新
+
+                finally:
+                    # 恢复标准输出和标准错误
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
+
+                    # 恢复原来的日志处理器
+                    exit_logger.handlers.clear()
+                    for handler in original_handlers:
+                        exit_logger.addHandler(handler)
+
+                # 根据ExitCursor的结果继续操作
+                if not success:
+                    self.log_handler.error("无法自动关闭Cursor，请手动关闭后重试")
+                    self.execute_button.setEnabled(True)
+                    return
+                else:
+                    # 保存cursor_path以便后续使用
+                    self.cursor_path = cursor_path if success else ""
+                    QApplication.processEvents()  # 确保UI更新
+
+                    # 对于功能1、4、5，需要立即执行重置设备信息
+                    if index in [0, 3, 4]:
+                        # 再次设置日志捕获，这次捕获重置设备信息的日志
+                        QApplication.processEvents()
+
+                        # 创建一个特殊的日志处理器来捕获重置设备信息的日志
+                        class ResetDeviceLogHandler(logging.Handler):
+                            def __init__(self, log_func):
+                                super().__init__()
+                                self.log_func = log_func
+
+                            def emit(self, record):
+                                msg = self.format(record)
+                                self.log_func(f"设备重置: {msg}")
+
+                        # 配置日志记录器
+                        reset_logger = logging.getLogger('cursor_pro_keep_alive')
+                        original_reset_handlers = reset_logger.handlers.copy()
+                        reset_logger.handlers.clear()
+
+                        # 添加自定义处理器
+                        reset_handler = ResetDeviceLogHandler(self.log_handler.info)
+                        reset_handler.setFormatter(logging.Formatter('%(message)s'))
+                        reset_logger.addHandler(reset_handler)
+
+                        # 捕获标准输出和标准错误
+                        reset_stdout_capture = io.StringIO()
+                        reset_stderr_capture = io.StringIO()
+
+                        # 备份当前的标准输出和标准错误
+                        old_stdout = sys.stdout
+                        old_stderr = sys.stderr
+
+                        # 重定向输出
+                        sys.stdout = reset_stdout_capture
+                        sys.stderr = reset_stderr_capture
+
+                        try:
+                            # 执行重置设备信息操作
+                            import asyncio
+                            self.log_handler.info("正在执行设备重置...")
+                            QApplication.processEvents()
+
+                            # 使用事件循环异步运行
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                if self.is_macos and self.has_permission:
+                                    # macOS下使用管理员权限重置设备ID
+                                    loop.run_until_complete(self.reset_machine_id_macos())
+                                else:
+                                    # 其他平台使用普通方式
+                                    loop.run_until_complete(reset_machine_id())
+                            finally:
+                                loop.close()
+
+                            # 捕获标准输出中的日志信息
+                            reset_stdout_log = reset_stdout_capture.getvalue()
+                            reset_stderr_log = reset_stderr_capture.getvalue()
+
+                            # 将捕获的日志显示在GUI中
+                            if reset_stdout_log:
+                                for line in reset_stdout_log.splitlines():
+                                    if line.strip():
+                                        self.log_handler.info(f"设备重置: {line.strip()}")
+                                        QApplication.processEvents()
+
+                            if reset_stderr_log:
+                                for line in reset_stderr_log.splitlines():
+                                    if line.strip():
+                                        self.log_handler.error(f"设备重置错误: {line.strip()}")
+                                        QApplication.processEvents()
+
+                            self.log_handler.info("设备信息重置完成")
+                            QApplication.processEvents()
+
+                        except Exception as e:
+                            self.log_handler.error(f"重置设备信息时出错: {str(e)}")
+                            import traceback
+                            self.log_handler.error(traceback.format_exc())
+                            self.execute_button.setEnabled(True)
+                            return
+                        finally:
+                            # 恢复标准输出和标准错误
+                            sys.stdout = old_stdout
+                            sys.stderr = old_stderr
+
+                            # 恢复原来的日志处理器
+                            reset_logger.handlers.clear()
+                            for handler in original_reset_handlers:
+                                reset_logger.addHandler(handler)
+
+            except Exception as e:
+                self.log_handler.error(f"关闭Cursor过程出错: {str(e)}")
+                import traceback
+                self.log_handler.error(traceback.format_exc())
+                self.execute_button.setEnabled(True)
+                return    
+        
         # 根据不同功能执行不同的任务
         if index == 0:  # 一键注册
             self.execute_task("register", {"device_reset_done": True})
@@ -1155,11 +1337,10 @@ class LoginDialog(QDialog):
             self.execute_task("reset_device")
         elif index == 2:  # 恢复设备信息
             self.execute_task("restore_device")
-        elif index == 3:  # 重置设备并登录
+        # elif index == 3:  # 重置设备并登录
             # 登录表单区域已在update_function_description中显示
             # 这里直接执行设备重置
-            self.log_handler.info("准备重置设备并登录...")
-            self.execute_task("reset_device", {"prepare_for_login": True})
+            
         elif index == 4:  # 重置设备并直接替换账号
             self.execute_task("replace_account", {"device_reset_done": True})
         elif index == 5:  # 批量注册
@@ -1176,62 +1357,31 @@ class LoginDialog(QDialog):
                 self.execute_button.setEnabled(True)
 
     def execute_task(self, task_type, params=None):
-        # 处理任务前确保日志显示正常
-        QApplication.processEvents()
+        try:
+            # 处理任务前确保日志显示正常
+            QApplication.processEvents()
 
-        # 为macOS上的replace_account任务特殊处理
-        if task_type == "replace_account" and self.is_macos:
-            self.log_handler.info("在macOS上执行替换账号操作，检查文件权限...")
+            # 禁用相关按钮，防止重复点击
+            if hasattr(self, 'execute_button') and self.execute_button:
+                self.execute_button.setEnabled(False)
+            if hasattr(self, 'confirm_login_button') and self.confirm_login_button:
+                self.confirm_login_button.setEnabled(False)
+            # 创建并启动工作线程
+            self.worker = WorkerThread(task_type, params)
+            self.worker.update_signal.connect(self.update_log)
+            self.worker.finished_signal.connect(self.task_finished)
+            self.worker.verification_code_signal.connect(self.show_verification_dialog)
+            self.worker.start()
+        except Exception as e:
+            import traceback
+            error_msg = f"启动任务时出错: {str(e)}\n{traceback.format_exc()}"
+            self.log_handler.error(error_msg)
 
-            # 检查并创建必要的目录
-            account_json_path = os.path.expanduser(
-                "~/Library/Application Support/Cursor/User/globalStorage/account.json")
-            account_dir = os.path.dirname(account_json_path)
-
-            if not os.path.exists(account_dir):
-                self.log_handler.info(f"目录不存在，尝试创建: {account_dir}")
-                try:
-                    # 使用管理员权限创建目录
-                    cmd = ['osascript', '-e',
-                           f'do shell script "mkdir -p \\"{account_dir}\\"" with administrator privileges']
-                    result = subprocess.run(cmd, capture_output=True, text=True)
-                    if result.returncode == 0:
-                        self.log_handler.info(f"成功创建目录: {account_dir}")
-                    else:
-                        self.log_handler.error(f"创建目录失败: {result.stderr}")
-                        self.task_finished(False)
-                        return
-                except Exception as e:
-                    self.log_handler.error(f"创建目录时出错: {str(e)}")
-                    self.task_finished(False)
-                    return
-
-            # 确保文件权限允许写入
-            if os.path.exists(account_json_path):
-                self.log_handler.info("检查account.json文件权限...")
-                try:
-                    # 使用管理员权限修改文件权限
-                    cmd = ['osascript', '-e',
-                           f'do shell script "chmod 666 \\"{account_json_path}\\"" with administrator privileges']
-                    result = subprocess.run(cmd, capture_output=True, text=True)
-                    if result.returncode == 0:
-                        self.log_handler.info("成功修改文件权限")
-                    else:
-                        self.log_handler.error(f"修改文件权限失败: {result.stderr}")
-                except Exception as e:
-                    self.log_handler.error(f"修改文件权限时出错: {str(e)}")
-
-            # 修改refresh_data.replace_account方法以使用额外参数
-            if not params:
-                params = {}
-            params["macos_admin"] = True
-
-        # 创建并启动工作线程
-        self.worker = WorkerThread(task_type, params)
-        self.worker.update_signal.connect(self.update_log)
-        self.worker.finished_signal.connect(self.task_finished)
-        self.worker.verification_code_signal.connect(self.show_verification_dialog)
-        self.worker.start()
+            # 重新启用按钮
+            if hasattr(self, 'execute_button') and self.execute_button:
+                self.execute_button.setEnabled(True)
+            if hasattr(self, 'confirm_login_button') and self.confirm_login_button:
+                self.confirm_login_button.setEnabled(True)
 
     def update_log(self, message, msg_type):
         if msg_type == "info":
@@ -1248,7 +1398,11 @@ class LoginDialog(QDialog):
 
     def task_finished(self, success):
         if success:
-            self.log_handler.info("任务已完成，请手动重新启动Cursor")
+            self.log_handler.info("任务完成")
+
+            # 对于已完成的任务，提示重启Cursor（如果适用）
+            if hasattr(self, 'cursor_path') and self.cursor_path:
+                self.log_handler.info("任务已完成，请手动重新启动Cursor")
         else:
             self.log_handler.error("任务失败")
 
@@ -1257,10 +1411,6 @@ class LoginDialog(QDialog):
 
         # 重新启用执行按钮
         self.execute_button.setEnabled(True)
-
-        # 如果有登录表单，也重新启用登录按钮
-        if hasattr(self, 'confirm_login_button'):
-            self.confirm_login_button.setEnabled(True)
 
     def closeEvent(self, event):
         """窗口关闭事件，恢复标准输出和标准错误流"""
@@ -1407,7 +1557,7 @@ class LoginDialog(QDialog):
             self.verification_code_input.clear()
             # 隐藏提交按钮直到有新输入
             self.verification_code_submit.setVisible(False)
-            # self.execute_function()
+            self.execute_function()
         else:
             self.log_handler.error("验证码不能为空")
 
@@ -1438,6 +1588,44 @@ class LoginDialog(QDialog):
             self.verification_code_input.setVisible(True)
             self.verification_code_submit.setVisible(False)  # 初始不显示，等有输入时再显示
             self.confirm_login_button.setVisible(False)
+
+    def clear_log(self):
+        """清除日志内容"""
+        self.log_text.clear()
+
+    def check_version(self):
+        """检查版本信息"""
+        # 尝试调用check_version函数
+        self.log_handler.info("正在检查版本...")
+        try:
+            # 捕获check_version函数的输出
+            check_version()
+            self.log_handler.info("版本检查完成")
+        except Exception as e:
+            self.log_handler.error(f"检查版本出错: {str(e)}")
+
+    def show_verification_dialog(self):
+        """显示验证码输入区域"""
+        logging.info("显示验证码输入区域...")
+        try:
+            # 显示验证码输入区域
+            self.verification_code_label.setVisible(True)
+            self.verification_code_input.setVisible(True)
+            self.verification_code_submit.setVisible(True)
+            self.verification_code_submit.setEnabled(True)
+
+            # 清空之前的输入
+            self.verification_code_input.clear()
+
+            # 给验证码输入框焦点
+            self.verification_code_input.setFocus()
+
+            self.log_handler.info("请在验证码输入框中输入您收到的验证码")
+
+        except Exception as e:
+            logging.error(f"显示验证码输入区域时出错: {str(e)}")
+            import traceback
+            logging.error(traceback.format_exc())
 
 
 class VerificationCodeDialog(QDialog):
@@ -1826,15 +2014,25 @@ class CursorProGUI(QMainWindow):
         login_layout = QVBoxLayout(self.login_form_area)
         login_layout.setContentsMargins(0, 10, 0, 0)
         login_layout.setSpacing(15)
+        # 确保在暗色模式下可见
+        self.login_form_area.setStyleSheet("""
+            QWidget {
+                background-color: #FFFFFF;
+            }
+            QLabel {
+                color: #000000;
+            }
+        """)
 
         # 登录方式选择 - 移到最上方
         login_type_label = QLabel("登录方式:")
         login_type_label.setFont(QFont("Arial", 11))
+        login_type_label.setStyleSheet("color: #000000;")
         self.login_type_combo = QComboBox()
         self.login_type_combo.addItem("密码登录")
         self.login_type_combo.addItem("验证码登录")
         self.login_type_combo.setFixedHeight(36)
-        self.login_type_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # 设置为填充可用空间
+        self.login_type_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         # 修复下拉框文字不可见问题
         self.login_type_combo.setStyleSheet("""
             QComboBox {
@@ -1842,7 +2040,7 @@ class CursorProGUI(QMainWindow):
                 border-radius: 4px;
                 padding: 5px;
                 background-color: white;
-                color: #333333;
+                color: #000000;
                 font-size: 14px;
                 min-width: 200px;
             }
@@ -1854,9 +2052,9 @@ class CursorProGUI(QMainWindow):
             }
             QComboBox QAbstractItemView {
                 background-color: white;
-                color: #333333;
+                color: #000000;
                 selection-background-color: #E0E0E0;
-                selection-color: #333333;
+                selection-color: #000000;
             }
         """)
         self.login_type_combo.currentIndexChanged.connect(self.toggle_password_visibility)
@@ -1876,28 +2074,58 @@ class CursorProGUI(QMainWindow):
         # 邮箱输入
         email_label = QLabel("邮箱:")
         email_label.setFont(QFont("Arial", 11))
+        email_label.setStyleSheet("color: #000000;")
         self.login_email_input = QLineEdit()
         self.login_email_input.setFixedHeight(36)
         self.login_email_input.setPlaceholderText("输入您的Cursor账号邮箱")
+        self.login_email_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                background-color: white;
+                color: #000000;
+            }
+        """)
         form_layout.addWidget(email_label, 0, 0)
         form_layout.addWidget(self.login_email_input, 0, 1)
 
         # 密码输入
         self.login_password_label = QLabel("密码:")
         self.login_password_label.setFont(QFont("Arial", 11))
+        self.login_password_label.setStyleSheet("color: #000000;")
         self.login_password_input = QLineEdit()
         self.login_password_input.setFixedHeight(36)
         self.login_password_input.setPlaceholderText("输入您的Cursor账号密码")
         self.login_password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.login_password_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                background-color: white;
+                color: #000000;
+            }
+        """)
         form_layout.addWidget(self.login_password_label, 1, 0)
         form_layout.addWidget(self.login_password_input, 1, 1)
 
         # 验证码输入区域 - 始终显示，但根据登录方式控制可见性
         self.verification_code_label = QLabel("验证码:")
         self.verification_code_label.setFont(QFont("Arial", 11))
+        self.verification_code_label.setStyleSheet("color: #000000;")
         self.verification_code_input = QLineEdit()
         self.verification_code_input.setFixedHeight(36)
         self.verification_code_input.setPlaceholderText("输入收到的验证码")
+        self.verification_code_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                background-color: white;
+                color: #000000;
+            }
+        """)
         self.verification_code_input.textChanged.connect(self.check_verification_code)
         self.verification_code_submit = QPushButton("确定")
         self.verification_code_submit.setFixedHeight(36)
@@ -2546,16 +2774,6 @@ class CursorProGUI(QMainWindow):
         else:
             logging.error("未找到GUI实例，无法显示验证码输入区域")
         return None
-
-    # 注意：此处不再需要以下方法，因为已在上面重新实现了
-    # def toggle_password_visibility(self, index):
-    #     """根据登录方式显示或隐藏密码框"""
-    #     if index == 0:  # 密码登录
-    #         self.login_password_input.setVisible(True)
-    #         self.login_password_label.setVisible(True)
-    #     else:  # 验证码登录
-    #         self.login_password_input.setVisible(False)
-    #         self.login_password_label.setVisible(False)
 
     # 添加确认登录的方法
     def confirm_login(self):
