@@ -968,7 +968,15 @@ class LoginDialog(QDialog):
         # 日志文本区域 - 使用固定颜色
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setFont(QFont("Consolas", 10))
+        
+        # 根据操作系统选择合适的等宽字体
+        if sys.platform == "darwin":  # macOS
+            self.log_text.setFont(QFont("Menlo", 10))
+        elif sys.platform == "win32":  # Windows
+            self.log_text.setFont(QFont("Consolas", 10))
+        else:  # Linux和其他平台
+            self.log_text.setFont(QFont("Monospace", 10))
+            
         self.log_text.setStyleSheet("""
             QTextEdit {
                 background-color: white;
@@ -1008,6 +1016,14 @@ class LoginDialog(QDialog):
 
         # 设置日志重定向
         self.setup_logging()
+
+        # 设置日志文本框的字体
+        if sys.platform == "darwin":  # macOS
+            self.log_text.setFont(QFont("Menlo", 10))
+        elif sys.platform == "win32":  # Windows
+            self.log_text.setFont(QFont("Consolas", 10))
+        else:  # Linux和其他平台
+            self.log_text.setFont(QFont("Monospace", 10))
 
         # 显示版本信息
         self.check_version()
@@ -2235,7 +2251,15 @@ class CursorProGUI(QMainWindow):
         # 日志文本区域 - 使用固定颜色
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setFont(QFont("Consolas", 10))
+        
+        # 根据操作系统选择合适的等宽字体
+        if sys.platform == "darwin":  # macOS
+            self.log_text.setFont(QFont("Menlo", 10))
+        elif sys.platform == "win32":  # Windows
+            self.log_text.setFont(QFont("Consolas", 10))
+        else:  # Linux和其他平台
+            self.log_text.setFont(QFont("Monospace", 10))
+            
         self.log_text.setStyleSheet("""
             QTextEdit {
                 background-color: white;
@@ -2275,6 +2299,14 @@ class CursorProGUI(QMainWindow):
 
         # 设置日志重定向
         self.setup_logging()
+
+        # 设置日志文本框的字体
+        if sys.platform == "darwin":  # macOS
+            self.log_text.setFont(QFont("Menlo", 10))
+        elif sys.platform == "win32":  # Windows
+            self.log_text.setFont(QFont("Consolas", 10))
+        else:  # Linux和其他平台
+            self.log_text.setFont(QFont("Monospace", 10))
 
         # 显示版本信息
         self.check_version()
@@ -2924,8 +2956,13 @@ if __name__ == "__main__":
     # 创建一个测试日志记录器
     test_logger = logging.getLogger('test_logger')
 
-    # 强制使用亮色模式，禁用暗色模式
-    os.environ["QT_QPA_PLATFORM"] = "windows:darkmode=0"
+    # 根据操作系统设置正确的 Qt 平台
+    if sys.platform == "darwin":  # macOS
+        os.environ["QT_QPA_PLATFORM"] = "cocoa"
+    elif sys.platform == "win32":  # Windows
+        os.environ["QT_QPA_PLATFORM"] = "windows:darkmode=0"
+    else:  # Linux 和其他平台
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
 
     app = QApplication(sys.argv)
 
