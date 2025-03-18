@@ -23,7 +23,7 @@ class Config:
 
         self._initialized = True
 
-        self.version = "0.4.3"
+        self.version = "0.4.4"
 
         # 获取应用程序的根目录路径
         if getattr(sys, "frozen", False):
@@ -42,7 +42,7 @@ class Config:
         if len(self._domains) > 0:
             self.domain = random.choice(self._domains)
         else:
-            self.domain =''
+            self.domain = ''
 
         # 不设置默认API URL，必须从环境变量中读取
 

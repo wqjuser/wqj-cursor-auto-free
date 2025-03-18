@@ -376,7 +376,7 @@ def version_check(version: str, min_version: str = "", max_version: str = "") ->
         current = parse_version(version)
 
         if min_version and current < parse_version(min_version):
-            logging.error(f"版本号 {version} 小于最小要求 {min_version}")
+            logging.info(f"版本号 {version} 小于最小 {min_version},无需修改main.js")
             return False
 
         if max_version and current > parse_version(max_version):

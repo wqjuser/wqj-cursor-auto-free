@@ -16,7 +16,8 @@ from PyQt6.QtWidgets import (
 )
 
 from browser_utils import BrowserManager
-from cursor_pro_keep_alive import sign_in_account, get_user_agent, get_cursor_session_token, update_cursor_auth, receive_verification_code
+from cursor_pro_keep_alive import sign_in_account, get_user_agent, get_cursor_session_token, update_cursor_auth, \
+    receive_verification_code
 
 # 导入Cursor Pro相关功能
 try:
@@ -1328,9 +1329,9 @@ class LoginDialog(QDialog):
                 import traceback
                 self.log_handler.error(traceback.format_exc())
                 self.execute_button.setEnabled(True)
-                return    
-        
-        # 根据不同功能执行不同的任务
+                return
+
+                # 根据不同功能执行不同的任务
         if index == 0:  # 一键注册
             self.execute_task("register", {"device_reset_done": True})
         elif index == 1:  # 修改设备信息
@@ -1338,9 +1339,9 @@ class LoginDialog(QDialog):
         elif index == 2:  # 恢复设备信息
             self.execute_task("restore_device")
         # elif index == 3:  # 重置设备并登录
-            # 登录表单区域已在update_function_description中显示
-            # 这里直接执行设备重置
-            
+        # 登录表单区域已在update_function_description中显示
+        # 这里直接执行设备重置
+
         elif index == 4:  # 重置设备并直接替换账号
             self.execute_task("replace_account", {"device_reset_done": True})
         elif index == 5:  # 批量注册
@@ -1722,6 +1723,7 @@ class CursorProGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         # 保存实例引用
+        self.cursor_path = None
         CursorProGUI._instance = self
 
         # 获取版本号
@@ -2374,14 +2376,8 @@ class CursorProGUI(QMainWindow):
 
             # 禁用按钮防止重复点击
             self.execute_button.setEnabled(False)
-
             # 执行登录任务
-            self.execute_task("login", {
-                "email": email,
-                "password": password,
-                "login_type": login_type,
-                "device_reset_done": False  # 需要先重置设备
-            })
+            self.execute_function(email=email, password=password, login_type=login_type)
 
         except Exception as e:
             import traceback
@@ -2389,7 +2385,7 @@ class CursorProGUI(QMainWindow):
             self.log_handler.error(error_msg)
             self.execute_button.setEnabled(True)
 
-    def execute_function(self):
+    def execute_function(self, email=None, password=None, login_type=None):
         # 获取选中的功能索引
         index = self.function_combo.currentIndex()
 
@@ -2594,19 +2590,23 @@ class CursorProGUI(QMainWindow):
                 import traceback
                 self.log_handler.error(traceback.format_exc())
                 self.execute_button.setEnabled(True)
-                return    
-        
-        # 根据不同功能执行不同的任务
+                return
+
+                # 根据不同功能执行不同的任务
         if index == 0:  # 一键注册
             self.execute_task("register", {"device_reset_done": True})
         elif index == 1:  # 修改设备信息
             self.execute_task("reset_device")
         elif index == 2:  # 恢复设备信息
             self.execute_task("restore_device")
-        # elif index == 3:  # 重置设备并登录
-            # 登录表单区域已在update_function_description中显示
-            # 这里直接执行设备重置
-            
+        elif index == 3:  # 重置设备并登录
+            self.execute_task("login", {
+                "email": email,
+                "password": password,
+                "login_type": login_type,
+                "device_reset_done": False  # 需要先重置设备
+            })
+
         elif index == 4:  # 重置设备并直接替换账号
             self.execute_task("replace_account", {"device_reset_done": True})
         elif index == 5:  # 批量注册
