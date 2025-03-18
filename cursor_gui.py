@@ -716,11 +716,26 @@ class ConfigDialog(QDialog):
             with open(self.env_file_path, 'w', encoding='utf-8') as file:
                 file.writelines(new_lines)
 
+            # 强制刷新缓存，确保文件内容立即写入磁盘
+            try:
+                # 在macOS上使用fsync确保文件写入磁盘
+                # import os  # 已经在文件顶部导入了，这里不需要再导入
+                fd = os.open(self.env_file_path, os.O_RDONLY)
+                os.fsync(fd)
+                os.close(fd)
+            except Exception as fsync_error:
+                logging.debug(f"同步文件到磁盘失败: {str(fsync_error)}")
+                pass
+
             from PyQt6.QtWidgets import QMessageBox
             QMessageBox.information(self, "保存成功", f"配置已成功保存到{self.env_file_path}文件")
 
             # 清除信息标签并重新加载配置
             self._clearInfoLabels()
+            
+            # 完全重新加载配置
+            self.env_vars = []
+            self.original_lines = []
             self.loadEnvFileConfig()
 
         except Exception as e:
@@ -850,6 +865,7 @@ class LoginDialog(QDialog):
         # 密码输入
         self.login_password_label = QLabel("密码:")
         self.login_password_label.setFont(QFont("Arial", 11))
+        self.login_password_label.setStyleSheet("color: #000000;")
         self.login_password_input = QLineEdit()
         self.login_password_input.setFixedHeight(36)
         self.login_password_input.setPlaceholderText("输入您的Cursor账号密码")
@@ -860,6 +876,7 @@ class LoginDialog(QDialog):
         # 验证码输入区域 - 始终显示，但根据登录方式控制可见性
         self.verification_code_label = QLabel("验证码:")
         self.verification_code_label.setFont(QFont("Arial", 11))
+        self.verification_code_label.setStyleSheet("color: #000000;")
         self.verification_code_input = QLineEdit()
         self.verification_code_input.setFixedHeight(36)
         self.verification_code_input.setPlaceholderText("输入收到的验证码")
@@ -2376,8 +2393,14 @@ class CursorProGUI(QMainWindow):
 
             # 禁用按钮防止重复点击
             self.execute_button.setEnabled(False)
+
             # 执行登录任务
-            self.execute_function(email=email, password=password, login_type=login_type)
+            self.execute_task("login", {
+                "email": email,
+                "password": password,
+                "login_type": login_type,
+                "device_reset_done": False  # 需要先重置设备
+            })
 
         except Exception as e:
             import traceback
@@ -2385,7 +2408,7 @@ class CursorProGUI(QMainWindow):
             self.log_handler.error(error_msg)
             self.execute_button.setEnabled(True)
 
-    def execute_function(self, email=None, password=None, login_type=None):
+    def execute_function(self):
         # 获取选中的功能索引
         index = self.function_combo.currentIndex()
 
@@ -2599,13 +2622,9 @@ class CursorProGUI(QMainWindow):
             self.execute_task("reset_device")
         elif index == 2:  # 恢复设备信息
             self.execute_task("restore_device")
-        elif index == 3:  # 重置设备并登录
-            self.execute_task("login", {
-                "email": email,
-                "password": password,
-                "login_type": login_type,
-                "device_reset_done": False  # 需要先重置设备
-            })
+        # elif index == 3:  # 重置设备并登录
+        # 登录表单区域已在update_function_description中显示
+        # 这里直接执行设备重置
 
         elif index == 4:  # 重置设备并直接替换账号
             self.execute_task("replace_account", {"device_reset_done": True})
