@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 from browser_utils import BrowserManager
 from cursor_pro_keep_alive import sign_in_account, get_user_agent, get_cursor_session_token, update_cursor_auth, \
     receive_verification_code
+from refresh_data import batch_register
 
 # 导入Cursor Pro相关功能
 try:
@@ -286,7 +287,7 @@ class WorkerThread(QThread):
     def handle_batch_register(self):
         num = self.params.get("num", 1)
         self.update_signal.emit(f"开始批量注册 {num} 个账号...", "info")
-        batch_register(num)
+        refresh_data.batch_register(num)
         self.finished_signal.emit(True)
 
     def handle_macos_replace_account(self):

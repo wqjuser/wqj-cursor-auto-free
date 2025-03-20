@@ -152,7 +152,7 @@ def handle_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1, 2)) 
     return False
 
 
-def get_cursor_session_token(tab, max_attempts=3, retry_interval=2) -> Optional[tuple[str, str]]:
+def get_cursor_session_token(tab, max_attempts=3, retry_interval=2) -> tuple[Optional[str], Optional[str]]:
     """
     获取Cursor会话token，带有重试机制
     :param tab: 浏览器标签页
@@ -191,7 +191,7 @@ def get_cursor_session_token(tab, max_attempts=3, retry_interval=2) -> Optional[
                 logging.info(f"将在 {retry_interval} 秒后重试...")
                 time.sleep(retry_interval)
 
-    return '', ''
+    return None, None
 
 
 def update_cursor_auth(email=None, access_token=None, refresh_token=None, user_id=None):
@@ -399,9 +399,14 @@ def get_user_agent():
         # 使用JavaScript获取user agent
         browser_manager = BrowserManager()
         browser = browser_manager.init_browser()
-        user_agent = browser.latest_tab.run_js("return navigator.userAgent")
-        browser_manager.quit()
-        return user_agent
+        # 确保browser.latest_tab是一个有效的对象，然后调用run_js方法
+        if browser and hasattr(browser, 'latest_tab') and browser.latest_tab:
+            user_agent = browser.latest_tab.run_js("return navigator.userAgent")
+            browser_manager.quit()
+            return user_agent
+        else:
+            logging.error("无法获取browser.latest_tab对象")
+            return None
     except Exception as e:
         logging.error(f"获取user agent失败: {str(e)}")
         return None
@@ -716,63 +721,75 @@ exit
 
 
 def try_register(is_auto_register=False):
-    global browser_manager, email_handler, sign_up_url, settings_url, account, password, first_name, last_name, email_box_id, new_email_handler
-    logging.info("开始注册账号")
-
+    """尝试注册"""
+    # 初始化浏览器
     logging.info("正在初始化浏览器...")
     # 获取user_agent
     user_agent = get_user_agent()
     if not user_agent:
         logging.error("获取user agent失败，使用默认值")
         user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    # 剔除user_agent中的"HeadlessChrome"
-    user_agent = user_agent.replace("HeadlessChrome", "Chrome")
     browser_manager = BrowserManager()
     browser = browser_manager.init_browser(user_agent=user_agent, randomize_fingerprint=True)
-    # 获取并打印浏览器的user-agent
-    user_agent = browser.latest_tab.run_js("return navigator.userAgent")
-    logging.info("正在初始化邮箱验证模块...")
-    # email_handler = EmailVerificationHandler(pin=pin)
-    new_email_handler = EmailHandler()
-    logging.info("=== 配置信息 ===")
-    login_url = "https://authenticator.cursor.sh"
-    sign_up_url = "https://authenticator.cursor.sh/sign-up"
-    settings_url = "https://www.cursor.com/settings"
-    logging.info("正在生成随机账号信息...")
-    email_generator = EmailGenerator()
-    account_info = email_generator.get_account_info()  # 获取包含随机密码的账号信息
-    account = account_info["email"]
-    if not account:
-        logging.error("未生成邮箱，跳过当前账号注册")
-        return browser_manager, False
-    password = account_info["password"]
-    first_name = account_info["first_name"]
-    last_name = account_info["last_name"]
-    tab = browser.latest_tab
-    tab.run_js("try { turnstile.reset() } catch(e) { }")
-    new_email_box = new_email_handler.generate_email(email=account)
-    email_box_id = new_email_box['id']
-    logging.info(f"生成的邮箱账号: {account}")
-    logging.info(f"正在访问登录页面: {login_url}")
-    tab.get(login_url)
-    is_success = False
-    if sign_up_account(tab, is_auto_register):
-        if not is_auto_register:
-            logging.info("正在获取会话令牌...")
-            user_id, token = get_cursor_session_token(tab)
-            if token:
-                logging.info("更新认证信息...")
-                update_cursor_auth(
-                    email=account, access_token=token, refresh_token=token, user_id=user_id
-                )
-                logging.info("所有操作已完成")
-                is_success = True
-            else:
-                logging.error("获取会话令牌失败，注册流程未完成")
+    try:
+        # 获取并打印浏览器的user-agent
+        tab = browser.latest_tab
+        if tab and hasattr(tab, 'run_js'):
+            user_agent = tab.run_js("return navigator.userAgent")
+            logging.info(f"浏览器的user-agent: {user_agent}")
+            
+            logging.info("正在初始化邮箱验证模块...")
+            # email_handler = EmailVerificationHandler(pin=pin)
+            new_email_handler = EmailHandler()
+            account = None
+            
+            # 生成账号信息
+            logging.info("正在生成邮箱账号...")
+            email_generator = EmailGenerator()
+            account_info = email_generator.get_account_info()
+            account = account_info["email"]
+            password = account_info["password"]
+            first_name = account_info["first_name"]
+            last_name = account_info["last_name"]
+            
+            if tab and hasattr(tab, 'run_js'):
+                tab.run_js("try { turnstile.reset() } catch(e) { }")
+            
+            new_email_box = new_email_handler.generate_email(email=account)
+            email_box_id = new_email_box['id']
+            
+            logging.info(f"生成的邮箱账号: {account}")
+            
+            login_url = "https://authenticator.cursor.sh"
+            logging.info(f"正在访问登录页面: {login_url}")
+            
+            if tab and hasattr(tab, 'get'):
+                tab.get(login_url)
+                is_success = False
+                if sign_up_account(tab, is_auto_register):
+                    if not is_auto_register:
+                        logging.info("账号注册成功，继续登录")
+                        # 获取会话令牌并更新到本地
+                        tokens = get_cursor_session_token(tab)
+                        if tokens:
+                            user_id, refresh_token = tokens
+                            is_success = update_cursor_auth(
+                                email=account,
+                                access_token=refresh_token,
+                                refresh_token=refresh_token,
+                                user_id=user_id,
+                                only_refresh=False
+                            )
         else:
-            is_success = True
-
-    return browser_manager, is_success
+            logging.error("浏览器标签页对象无效，无法执行操作")
+            return False
+    except Exception as e:
+        logging.error(f"注册过程出错: {str(e)}")
+        return False
+    finally:
+        if browser_manager:
+            browser_manager.quit()
+    return True
 
 
 def batch_register(num_accounts):

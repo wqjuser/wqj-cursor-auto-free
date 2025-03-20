@@ -18,10 +18,14 @@ class BrowserManager:
     def init_browser(self, user_agent=None, randomize_fingerprint=False):
         """初始化浏览器"""
         co = self._get_browser_options(user_agent, randomize_fingerprint)
-        self.browser = Chromium(co)
-        if randomize_fingerprint:
-            self._inject_fingerprint_js(self.browser.latest_tab)
-        return self.browser
+        try:
+            self.browser = Chromium(co)
+            if randomize_fingerprint:
+                self._inject_fingerprint_js(self.browser.latest_tab)
+            return self.browser
+        except Exception as e:
+            logging.error(f"初始化浏览器失败: {str(e)}")
+            raise
 
     def _get_browser_options(self, user_agent=None, randomize_fingerprint=False):
         """获取浏览器配置"""

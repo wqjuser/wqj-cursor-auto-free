@@ -107,7 +107,7 @@ def handle_turnstile(tab, max_retries: int = 2) -> bool:
     return False
 
 
-def get_cursor_session_token(tab, max_attempts=3) -> Optional[tuple[str, str]]:
+def get_cursor_session_token(tab, max_attempts=3) -> tuple[Optional[str], Optional[str]]:
     """获取Cursor会话token"""
     logging.info("开始获取cookie")
     attempts = 0
@@ -135,7 +135,7 @@ def get_cursor_session_token(tab, max_attempts=3) -> Optional[tuple[str, str]]:
             if attempts < max_attempts:
                 time.sleep(2)
 
-    return None
+    return None, None
 
 
 def sign_in_account(tab, email: str, password: str) -> bool:

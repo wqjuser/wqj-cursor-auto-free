@@ -23,7 +23,7 @@ class Config:
 
         self._initialized = True
 
-        self.version = "0.4.5"
+        self.version = "0.4.7"
 
         # 获取应用程序的根目录路径
         if getattr(sys, "frozen", False):
