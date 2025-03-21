@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
 from browser_utils import BrowserManager
 from cursor_pro_keep_alive import sign_in_account, get_user_agent, get_cursor_session_token, update_cursor_auth, \
     receive_verification_code
-from refresh_data import batch_register
 
 # 导入Cursor Pro相关功能
 try:
@@ -174,9 +173,7 @@ class WorkerThread(QThread):
 
     def handle_register(self):
         self.update_signal.emit("开始注册账号流程...", "info")
-        browser_manager, is_success = try_register(is_auto_register=False)
-        if browser_manager:
-            browser_manager.quit()
+        _, is_success = try_register(is_auto_register=False)
         self.finished_signal.emit(is_success)
 
     def handle_reset_device(self, prepare_for_login=False):
@@ -733,7 +730,7 @@ class ConfigDialog(QDialog):
 
             # 清除信息标签并重新加载配置
             self._clearInfoLabels()
-            
+
             # 完全重新加载配置
             self.env_vars = []
             self.original_lines = []
@@ -969,7 +966,7 @@ class LoginDialog(QDialog):
         # 日志文本区域 - 使用固定颜色
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        
+
         # 根据操作系统选择合适的等宽字体
         if sys.platform == "darwin":  # macOS
             self.log_text.setFont(QFont("Menlo", 10))
@@ -977,7 +974,7 @@ class LoginDialog(QDialog):
             self.log_text.setFont(QFont("Consolas", 10))
         else:  # Linux和其他平台
             self.log_text.setFont(QFont("Monospace", 10))
-            
+
         self.log_text.setStyleSheet("""
             QTextEdit {
                 background-color: white;
@@ -2252,7 +2249,7 @@ class CursorProGUI(QMainWindow):
         # 日志文本区域 - 使用固定颜色
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        
+
         # 根据操作系统选择合适的等宽字体
         if sys.platform == "darwin":  # macOS
             self.log_text.setFont(QFont("Menlo", 10))
@@ -2260,7 +2257,7 @@ class CursorProGUI(QMainWindow):
             self.log_text.setFont(QFont("Consolas", 10))
         else:  # Linux和其他平台
             self.log_text.setFont(QFont("Monospace", 10))
-            
+
         self.log_text.setStyleSheet("""
             QTextEdit {
                 background-color: white;
