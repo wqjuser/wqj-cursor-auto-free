@@ -6,6 +6,7 @@ import sys
 import time
 import urllib.parse
 from datetime import datetime, timedelta, UTC, timezone
+from enum import Enum
 from typing import Optional, Dict, List
 
 import requests
@@ -21,6 +22,22 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
+
+verification_code = None
+
+class VerificationStatus(Enum):
+    """验证状态枚举"""
+
+    PASSWORD_PAGE = "@name=password"
+    CAPTCHA_PAGE = "@data-index=0"
+    ACCOUNT_SETTINGS = "Account Settings"
+
+
+class TurnstileError(Exception):
+    """Turnstile 验证相关异常"""
+
+    pass
 
 
 class EmailGenerator:
@@ -61,48 +78,65 @@ class EmailGenerator:
             "last_name": self.generate_random_name()
         }
 
+def check_verification_success(tab) -> Optional[VerificationStatus]:
+    """
+    检查验证是否成功
+    Args:
+        tab: 浏览器标签页
+    Returns:
+        VerificationStatus: 验证成功时返回对应状态，失败返回 None
+    """
+    # 检查是否到达成功页面
+    for status in VerificationStatus:
+        if tab.ele(status.value):
+            logging.info(f"验证成功 - 已到达{status.name}页面")
+            return status
 
-def handle_turnstile(tab, max_retries: int = 2) -> bool:
+    return None
+
+def handle_turnstile(tab, max_retries: int = 2, retry_interval: tuple = (1, 2)) -> bool:
     """处理 Turnstile 验证"""
     logging.info("正在检测 Turnstile 验证...")
     retry_count = 0
+    try:
+        while retry_count < max_retries:
+            retry_count += 1
+            logging.debug(f"第 {retry_count} 次尝试验证")
 
-    while retry_count < max_retries:
-        retry_count += 1
-        logging.debug(f"第 {retry_count} 次尝试验证")
+            try:
+                # 定位验证框元素
+                challenge_check = (
+                    tab.ele("@id=cf-turnstile", timeout=2)
+                    .child()
+                    .shadow_root.ele("tag:iframe")
+                    .ele("tag:body")
+                    .sr("tag:input")
+                )
 
-        try:
-            # 定位验证框元素
-            challenge_check = (
-                tab.ele("@id=cf-turnstile", timeout=2)
-                .child()
-                .shadow_root.ele("tag:iframe")
-                .ele("tag:body")
-                .sr("tag:input")
-            )
+                if challenge_check:
+                    logging.info("检测到 Turnstile 验证框，开始处理...")
+                    time.sleep(random.uniform(1, 3))
+                    challenge_check.click()
+                    time.sleep(2)
 
-            if challenge_check:
-                logging.info("检测到 Turnstile 验证框，开始处理...")
-                time.sleep(random.uniform(1, 3))
-                challenge_check.click()
-                time.sleep(2)
+            except Exception as e:
+                logging.debug(f"当前尝试未成功: {str(e)}")
 
             # 检查验证结果
-            if tab.ele("Account Settings"):
-                logging.info("验证成功 - 已进入账户设置页面")
+            verification_result = check_verification_success(tab)
+            if verification_result:
                 return True
-            elif tab.ele("@data-index=0"):
-                logging.info("验证成功 - 已到达验证码页面")
-                return True
-            elif tab.ele("@name=password"):
-                logging.info("验证成功 - 已到达密码页面")
-                return True
+            elif retry_count < max_retries:
+                time.sleep(random.uniform(*retry_interval))
+                continue
+            else:
+                logging.error(f"验证失败 - 已达到最大重试次数 {max_retries}")
+                return False
 
-        except Exception as e:
-            logging.debug(f"当前尝试未成功: {str(e)}")
-
-        if retry_count < max_retries:
-            time.sleep(random.uniform(1, 2))
+    except Exception as e:
+        error_msg = f"Turnstile 验证过程发生异常: {str(e)}"
+        logging.error(error_msg)
+        raise TurnstileError(error_msg)
 
     return False
 
