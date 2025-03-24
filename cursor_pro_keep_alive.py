@@ -1124,13 +1124,7 @@ async def main():
         success, cursor_path = ExitCursor()
         logging.info("处理Cursor...")
         await reset_machine_id()
-        time.sleep(2)
-        register = input("\n是否需要注册账号？(y/n)").strip().lower()
-        if register == "y":
-            browser_manager, is_success = try_register()
-        else:
-            is_success = True
-
+        browser_manager, is_success = try_register()
     except Exception as e:
         logging.error(f"程序执行出现错误: {str(e)}")
         import traceback
